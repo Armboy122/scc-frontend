@@ -20,42 +20,49 @@ function StatefulGpsPicker({ onChange }: { onChange: (coords: GpsCoords | null) 
 describe('GpsPicker', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
-  it('searches a tambon and pins the selected result', async () => {
+  it('searches through the location API proxy and pins the selected result', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => [
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        results: [
           {
-            place_id: 1,
-            display_name: 'ตำบลบางรัก, อำเภอเมือง, จังหวัดตรัง, ประเทศไทย',
-            lat: '7.563100',
-            lon: '99.611400',
+            label: 'ตำบลบางรัก, อำเภอเมือง, จังหวัดตรัง',
+            latitude: 7.5631,
+            longitude: 99.6114,
           },
         ],
       }),
-    )
+    })
+    vi.stubGlobal('fetch', fetchMock)
 
     render(<StatefulGpsPicker onChange={onChange} />)
 
-    await user.type(screen.getByLabelText('ค้นหาตำบลหรือสถานที่'), 'ตำบลบางรัก ตรัง')
+    await user.type(screen.getByLabelText('ค้นหาสถานที่'), 'ตำบลบางรัก ตรัง')
     await user.click(screen.getByRole('button', { name: /ค้นหา/ }))
-    await user.click(await screen.findByText('เลือกปักหมุดนี้'))
+    await user.click(await screen.findByRole('button', { name: /ตำบลบางรัก/ }))
 
-    expect(onChange).toHaveBeenCalledWith({ latitude: 7.5631, longitude: 99.6114 })
-    expect(screen.getByText('7.563100, 99.611400')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith('/api/location?mode=search&q=%E0%B8%95%E0%B8%B3%E0%B8%9A%E0%B8%A5%E0%B8%9A%E0%B8%B2%E0%B8%87%E0%B8%A3%E0%B8%B1%E0%B8%81%20%E0%B8%95%E0%B8%A3%E0%B8%B1%E0%B8%87')
+    expect(onChange).toHaveBeenCalledWith({
+      latitude: 7.5631,
+      longitude: 99.6114,
+      label: 'ตำบลบางรัก, อำเภอเมือง, จังหวัดตรัง',
+    })
+    expect(screen.getByText('7.563100')).toBeInTheDocument()
+    expect(screen.getByText('99.611400')).toBeInTheDocument()
   })
 
-  it('pins manually entered coordinates', async () => {
+  it('keeps manual coordinate entry as a fallback', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
     render(<StatefulGpsPicker onChange={onChange} />)
 
+    await user.click(screen.getByText('กรอกพิกัดเอง ถ้าแผนที่/GPS ใช้ไม่ได้'))
     await user.type(screen.getByLabelText('ละติจูด'), '13.7563')
     await user.type(screen.getByLabelText('ลองจิจูด'), '100.5018')
     await user.click(screen.getByRole('button', { name: 'ปักหมุดจากพิกัดที่กรอก' }))
@@ -69,6 +76,7 @@ describe('GpsPicker', () => {
 
     render(<StatefulGpsPicker onChange={onChange} />)
 
+    await user.click(screen.getByText('กรอกพิกัดเอง ถ้าแผนที่/GPS ใช้ไม่ได้'))
     await user.type(screen.getByLabelText('ละติจูด'), '999')
     await user.type(screen.getByLabelText('ลองจิจูด'), '100')
     await user.click(screen.getByRole('button', { name: 'ปักหมุดจากพิกัดที่กรอก' }))
