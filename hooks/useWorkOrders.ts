@@ -113,10 +113,7 @@ export function useSubmitInstall() {
       for (const coverCode of payload.coverCodes) {
         await api.post(`/workorders/${id}/scan-install`, { coverCode })
       }
-      return api.post<WorkOrder>(`/workorders/${id}/submit-install`, {
-        gpsLat: payload.latitude,
-        gpsLng: payload.longitude,
-      })
+      return api.post<WorkOrder>(`/workorders/${id}/submit-install`)
     },
     onSuccess: (_data, { id }) => {
       void qc.invalidateQueries({ queryKey: KEYS.detail(id) })

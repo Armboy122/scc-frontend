@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { useWorkOrder, useSubmitInstall } from '@/hooks/useWorkOrders'
 import { QrScanner } from '@/components/feature/QrScanner'
-import { GpsPicker, type GpsCoords } from '@/components/feature/GpsPicker'
 import { PhotoCapture } from '@/components/feature/PhotoCapture'
 import { CoverScanList, type ScannedCover } from '@/components/feature/CoverScanList'
 import { Button } from '@/components/ui/Button'
@@ -24,7 +23,6 @@ export default function InstallPage({
 
   const [scannedCovers, setScannedCovers] = useState<ScannedCover[]>([])
   const [manualCode, setManualCode] = useState('')
-  const [gps, setGps] = useState<GpsCoords | null>(null)
   const [photo, setPhoto] = useState<File | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
@@ -55,7 +53,6 @@ export default function InstallPage({
         id,
         payload: {
           coverCodes: scannedCovers.map((c) => c.code),
-          ...(gps ? { latitude: gps.latitude, longitude: gps.longitude } : {}),
         },
       })
       router.replace(`/workorders/${id}`)
@@ -151,12 +148,6 @@ export default function InstallPage({
       <div>
         <p className="text-sm font-medium text-gray-700 mb-2">ถ่ายภาพประกอบ</p>
         <PhotoCapture value={photo} onChange={setPhoto} />
-      </div>
-
-      {/* GPS */}
-      <div>
-        <p className="text-sm font-medium text-gray-700 mb-2">ตำแหน่ง GPS</p>
-        <GpsPicker value={gps} onChange={setGps} />
       </div>
 
       {/* Submit */}

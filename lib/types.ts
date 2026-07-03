@@ -187,8 +187,6 @@ export interface RegisterCoverRequest {
 export interface SubmitInstallRequest {
   coverCodes: string[]
   photoUrl?: string
-  latitude?: number
-  longitude?: number
 }
 
 export interface SubmitRemoveRequest {
