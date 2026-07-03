@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState } from 'react'
+import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { useWorkOrder, useSubmitInstall } from '@/hooks/useWorkOrders'
@@ -26,6 +26,13 @@ export default function InstallPage({
   const [photo, setPhoto] = useState<File | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
+  const [isSubmittingInstall, setIsSubmittingInstall] = useState(false)
+
+  useEffect(() => {
+    if (order && order.status !== 'SCHEDULED') {
+      router.replace(`/workorders/${id}`)
+    }
+  }, [id, order, router])
 
   const addCode = (code: string) => {
     const trimmed = code.trim()
@@ -48,6 +55,9 @@ export default function InstallPage({
   }
 
   const handleSubmit = async () => {
+    if (isSubmittingInstall || submitInstall.isPending) return
+
+    setIsSubmittingInstall(true)
     try {
       await submitInstall.mutateAsync({
         id,
@@ -55,9 +65,11 @@ export default function InstallPage({
           coverCodes: scannedCovers.map((c) => c.code),
         },
       })
+      router.refresh()
       router.replace(`/workorders/${id}`)
     } catch {
       // error shown via mutation.error
+      setIsSubmittingInstall(false)
     } finally {
       setConfirmOpen(false)
     }
@@ -75,7 +87,8 @@ export default function InstallPage({
 
   const plannedQty = order.plannedQty
   const scannedQty = scannedCovers.length
-  const progress = Math.min(1, scannedQty / plannedQty)
+  const progress = plannedQty > 0 ? Math.min(1, scannedQty / plannedQty) : 0
+  const submitLocked = isSubmittingInstall || submitInstall.isPending || order.status !== 'SCHEDULED'
 
   return (
     <div className="page-padding max-w-lg mx-auto space-y-5">
@@ -122,6 +135,7 @@ export default function InstallPage({
             onChange={(e) => setManualCode(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleManualAdd() }}}
             error={scanError ?? undefined}
+            disabled={submitLocked}
           />
         </div>
         <Button
@@ -130,7 +144,7 @@ export default function InstallPage({
           size="md"
           className="flex-shrink-0 h-12 self-start"
           onClick={handleManualAdd}
-          disabled={!manualCode.trim()}
+          disabled={!manualCode.trim() || submitLocked}
         >
           เพิ่ม
         </Button>
@@ -141,13 +155,13 @@ export default function InstallPage({
         <h2 className="text-sm font-semibold text-gray-700 mb-3">
           สแกนแล้ว ({scannedQty} ชิ้น)
         </h2>
-        <CoverScanList covers={scannedCovers} onRemove={removeCode} />
+        <CoverScanList covers={scannedCovers} onRemove={removeCode} readOnly={submitLocked} />
       </Card>
 
       {/* Photo capture */}
       <div>
         <p className="text-sm font-medium text-gray-700 mb-2">ถ่ายภาพประกอบ</p>
-        <PhotoCapture value={photo} onChange={setPhoto} />
+        <PhotoCapture value={photo} onChange={setPhoto} disabled={submitLocked} />
       </div>
 
       {/* Submit */}
@@ -155,11 +169,11 @@ export default function InstallPage({
         <Button
           size="xl"
           fullWidth
-          disabled={scannedQty === 0}
+          disabled={scannedQty === 0 || submitLocked}
           onClick={() => setConfirmOpen(true)}
           leftIcon={<CheckCircle2 className="w-5 h-5" />}
         >
-          ยืนยันการติดตั้ง ({scannedQty} ชิ้น)
+          {submitLocked ? 'กำลังบันทึกงานติดตั้ง...' : `ยืนยันการติดตั้ง (${scannedQty} ชิ้น)`}
         </Button>
       ) : (
         <Card className="bg-pea-50 border-pea-200 space-y-3">
@@ -167,13 +181,14 @@ export default function InstallPage({
             ยืนยันการติดตั้งฉนวน {scannedQty} ชิ้น?
           </p>
           <div className="flex gap-2">
-            <Button variant="ghost" size="lg" className="flex-1" onClick={() => setConfirmOpen(false)}>
+            <Button variant="ghost" size="lg" className="flex-1" onClick={() => setConfirmOpen(false)} disabled={submitLocked}>
               ยกเลิก
             </Button>
             <Button
               size="lg"
               className="flex-1"
-              loading={submitInstall.isPending}
+              loading={submitLocked}
+              disabled={submitLocked}
               onClick={() => void handleSubmit()}
             >
               ยืนยัน

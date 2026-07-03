@@ -115,9 +115,16 @@ export function useSubmitInstall() {
       }
       return api.post<WorkOrder>(`/workorders/${id}/submit-install`)
     },
-    onSuccess: (_data, { id }) => {
-      void qc.invalidateQueries({ queryKey: KEYS.detail(id) })
-      void qc.invalidateQueries({ queryKey: KEYS.all })
+    onSuccess: async (res, { id }) => {
+      if (res.data) {
+        const updatedOrder = normaliseWorkOrder(res.data)
+        qc.setQueryData(KEYS.detail(id), updatedOrder)
+      }
+
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: KEYS.detail(id) }),
+        qc.invalidateQueries({ queryKey: KEYS.all }),
+      ])
     },
   })
 }

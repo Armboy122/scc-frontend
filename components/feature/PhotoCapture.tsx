@@ -7,13 +7,15 @@ import { Button } from '@/components/ui/Button'
 interface PhotoCaptureProps {
   onChange: (file: File | null) => void
   value?: File | null
+  disabled?: boolean
 }
 
-export function PhotoCapture({ onChange, value }: PhotoCaptureProps) {
+export function PhotoCapture({ onChange, value, disabled = false }: PhotoCaptureProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<string | null>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return
     const file = e.target.files?.[0] ?? null
     if (file) {
       const url = URL.createObjectURL(file)
@@ -23,6 +25,7 @@ export function PhotoCapture({ onChange, value }: PhotoCaptureProps) {
   }
 
   const handleRemove = () => {
+    if (disabled) return
     onChange(null)
     setPreview(null)
     if (inputRef.current) inputRef.current.value = ''
@@ -36,6 +39,7 @@ export function PhotoCapture({ onChange, value }: PhotoCaptureProps) {
         accept="image/*"
         capture="environment"
         onChange={handleChange}
+        disabled={disabled}
         className="sr-only"
         id="photo-capture-input"
         aria-label="ถ่ายภาพประกอบ"
@@ -52,6 +56,7 @@ export function PhotoCapture({ onChange, value }: PhotoCaptureProps) {
           <button
             type="button"
             onClick={handleRemove}
+            disabled={disabled}
             className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white hover:bg-black/80 transition-colors"
             aria-label="ลบภาพ"
           >
@@ -66,6 +71,7 @@ export function PhotoCapture({ onChange, value }: PhotoCaptureProps) {
           leftIcon={<Camera className="w-5 h-5" />}
           fullWidth
           onClick={() => inputRef.current?.click()}
+          disabled={disabled}
         >
           ถ่ายภาพประกอบ
         </Button>
