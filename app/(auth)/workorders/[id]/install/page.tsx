@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { useWorkOrder, useSubmitInstall } from '@/hooks/useWorkOrders'
+import { ApiError } from '@/lib/api'
 import { QrScanner } from '@/components/feature/QrScanner'
 import { PhotoCapture } from '@/components/feature/PhotoCapture'
 import { CoverScanList, type ScannedCover } from '@/components/feature/CoverScanList'
@@ -196,7 +197,9 @@ export default function InstallPage({
           </div>
           {submitInstall.isError && (
             <p role="alert" className="text-xs text-red-600 text-center">
-              เกิดข้อผิดพลาด กรุณาลองใหม่
+              {submitInstall.error instanceof ApiError
+                ? submitInstall.error.message
+                : 'เกิดข้อผิดพลาด กรุณาลองใหม่'}
             </p>
           )}
         </Card>

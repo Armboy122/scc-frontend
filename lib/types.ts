@@ -193,8 +193,6 @@ export interface SubmitInstallRequest {
 
 export interface SubmitRemoveRequest {
   coverCodes: string[]
-  latitude?: number
-  longitude?: number
 }
 
 export interface CreateBorrowRequest {

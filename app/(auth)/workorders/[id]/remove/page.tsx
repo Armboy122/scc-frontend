@@ -2,10 +2,10 @@
 
 import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, ArrowLeft, CheckCircle2, MapPin } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { useWorkOrder, useSubmitRemove } from '@/hooks/useWorkOrders'
+import { ApiError } from '@/lib/api'
 import { QrScanner } from '@/components/feature/QrScanner'
-import { GpsPicker, type GpsCoords } from '@/components/feature/GpsPicker'
 import { CoverScanList, type ScannedCover } from '@/components/feature/CoverScanList'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -23,7 +23,6 @@ export default function RemovePage({
 
   const [removedCovers, setRemovedCovers] = useState<ScannedCover[]>([])
   const [manualCode, setManualCode] = useState('')
-  const [gps, setGps] = useState<GpsCoords | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
   const [isSubmittingRemove, setIsSubmittingRemove] = useState(false)
@@ -59,7 +58,6 @@ export default function RemovePage({
         id,
         payload: {
           coverCodes: removedCovers.map((c) => c.code),
-          ...(gps ? { latitude: gps.latitude, longitude: gps.longitude } : {}),
         },
       })
       router.refresh()
@@ -104,27 +102,6 @@ export default function RemovePage({
           <p className="text-sm text-gray-500">{order.customerName}</p>
         </div>
       </div>
-
-      {/* GPS navigation card */}
-      {order.latitude && order.longitude && (
-        <a
-          href={`https://www.google.com/maps?q=${order.latitude},${order.longitude}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 card-surface p-4 border-pea-200 bg-pea-50 hover:bg-pea-100 transition-colors"
-        >
-          <MapPin className="w-6 h-6 text-pea-600 flex-shrink-0" aria-hidden />
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-pea-900">นำทางไปยังสถานที่</p>
-            <p className="text-xs text-pea-700 font-mono tabular-nums">
-              {order.latitude.toFixed(5)}, {order.longitude.toFixed(5)}
-            </p>
-          </div>
-          <span className="ml-auto text-xs text-pea-600 font-medium flex-shrink-0">
-            เปิด Maps →
-          </span>
-        </a>
-      )}
 
       {/* Progress */}
       <Card padding="sm">
@@ -188,12 +165,6 @@ export default function RemovePage({
         <CoverScanList covers={removedCovers} onRemove={(code) => setRemovedCovers((prev) => prev.filter((c) => c.code !== code))} readOnly={submitLocked} />
       </Card>
 
-      {/* GPS capture */}
-      <div>
-        <p className="text-sm font-medium text-gray-700 mb-2">ตำแหน่ง GPS (ขณะถอด)</p>
-        <GpsPicker value={gps} onChange={setGps} />
-      </div>
-
       {/* Close job button */}
       {!confirmOpen ? (
         <div className="space-y-2">
@@ -233,7 +204,9 @@ export default function RemovePage({
           </div>
           {submitRemove.isError && (
             <p role="alert" className="text-xs text-red-600 text-center">
-              เกิดข้อผิดพลาด กรุณาลองใหม่
+              {submitRemove.error instanceof ApiError
+                ? submitRemove.error.message
+                : 'เกิดข้อผิดพลาด กรุณาลองใหม่'}
             </p>
           )}
         </Card>

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { ApiError, api } from '@/lib/api'
 import type {
   CreateWorkOrderRequest,
   SubmitInstallRequest,
@@ -48,6 +48,31 @@ async function updateWorkOrderCache(qc: QueryClient, id: string, order?: WorkOrd
     qc.invalidateQueries({ queryKey: KEYS.detail(id) }),
     qc.invalidateQueries({ queryKey: KEYS.all }),
   ])
+}
+
+function toCoverCodeError(err: unknown, coverCode: string): unknown {
+  if (!(err instanceof ApiError)) return err
+
+  const normalizedMessage = err.message.toLowerCase()
+  if (err.code === 'CONFLICT' || err.code === 'STATE_INVALID') {
+    if (normalizedMessage.includes('cover not found')) {
+      return new ApiError(`เลข ${coverCode} ไม่ถูกต้อง ไม่พบ QR/รหัสครอบฉนวนนี้`, err.code, err.status)
+    }
+    if (normalizedMessage.includes('cover not in this work order')) {
+      return new ApiError(`เลข ${coverCode} ไม่อยู่ในใบงานนี้ กรุณาตรวจสอบอีกครั้ง`, err.code, err.status)
+    }
+    if (normalizedMessage.includes('not in stock')) {
+      return new ApiError(`เลข ${coverCode} ไม่พร้อมติดตั้งในสต็อก`, err.code, err.status)
+    }
+    if (normalizedMessage.includes('wrong office')) {
+      return new ApiError(`เลข ${coverCode} ไม่ใช่ครอบฉนวนของหน่วยงานใบงานนี้`, err.code, err.status)
+    }
+    if (normalizedMessage.includes('not all covers removed')) {
+      return new ApiError('ยังถอดครอบฉนวนไม่ครบ จึงปิดงานไม่ได้', err.code, err.status)
+    }
+  }
+
+  return new ApiError(`ตรวจสอบเลข ${coverCode} ไม่ผ่าน: ${err.message}`, err.code, err.status)
 }
 
 // ─── List ─────────────────────────────────────────────────────────────────────
@@ -116,7 +141,11 @@ export function useSubmitInstall() {
   return useMutation({
     mutationFn: async ({ id, payload }: { id: string; payload: SubmitInstallRequest }) => {
       for (const coverCode of payload.coverCodes) {
-        await api.post(`/workorders/${id}/scan-install`, { coverCode })
+        try {
+          await api.post(`/workorders/${id}/scan-install`, { coverCode })
+        } catch (err) {
+          throw toCoverCodeError(err, coverCode)
+        }
       }
       return api.post<WorkOrder>(`/workorders/${id}/submit-install`)
     },
@@ -141,12 +170,13 @@ export function useSubmitRemove() {
   return useMutation({
     mutationFn: async ({ id, payload }: { id: string; payload: SubmitRemoveRequest }) => {
       for (const coverCode of payload.coverCodes) {
-        await api.post(`/workorders/${id}/scan-remove`, { coverCode })
+        try {
+          await api.post(`/workorders/${id}/scan-remove`, { coverCode })
+        } catch (err) {
+          throw toCoverCodeError(err, coverCode)
+        }
       }
-      return api.post<WorkOrder>(`/workorders/${id}/complete-removal`, {
-        gpsLat: payload.latitude,
-        gpsLng: payload.longitude,
-      })
+      return api.post<WorkOrder>(`/workorders/${id}/complete-removal`)
     },
     onSuccess: (res, { id }) => updateWorkOrderCache(qc, id, res.data),
   })
