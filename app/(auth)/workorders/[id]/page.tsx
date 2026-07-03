@@ -11,7 +11,7 @@ import {
   Wrench,
   XCircle,
 } from 'lucide-react'
-import { useWorkOrder, useCancelWorkOrder, useStartWorkOrder, useStartRemoval } from '@/hooks/useWorkOrders'
+import { useWorkOrder, useCancelWorkOrder, useStartRemoval } from '@/hooks/useWorkOrders'
 import { useAuth } from '@/lib/auth'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Button } from '@/components/ui/Button'
@@ -62,11 +62,11 @@ function ActionButtons({ order }: { order: WorkOrder }) {
   const router = useRouter()
   const { user } = useAuth()
   const cancelMutation = useCancelWorkOrder()
-  const startMutation = useStartWorkOrder()
   const startRemovalMutation = useStartRemoval()
   const [confirmCancel, setConfirmCancel] = useState(false)
 
   const isTech = user?.role === 'tech'
+  const canCancel = user?.role === 'exec'
 
   return (
     <div className="space-y-3">
@@ -77,16 +77,12 @@ function ActionButtons({ order }: { order: WorkOrder }) {
               size="xl"
               fullWidth
               leftIcon={<Wrench className="w-5 h-5" />}
-              loading={startMutation.isPending}
-              onClick={async () => {
-                await startMutation.mutateAsync(order.id)
-                router.push(`/workorders/${order.id}/install`)
-              }}
+              onClick={() => router.push(`/workorders/${order.id}/install`)}
             >
-              เริ่มงานติดตั้ง
+              ดำเนินการติดตั้ง
             </Button>
           )}
-          {!confirmCancel ? (
+          {canCancel && (!confirmCancel ? (
             <Button
               variant="outline"
               size="lg"
@@ -99,7 +95,7 @@ function ActionButtons({ order }: { order: WorkOrder }) {
           ) : (
             <div className="card-surface p-4 bg-red-50 border-red-200 space-y-3">
               <p className="text-sm font-medium text-red-800 text-center">
-                ยืนยันการยกเลิกใบงาน?
+                ยืนยันการยกเลิกใบงาน? ระบบจะคงใบงานไว้และเปลี่ยนสถานะเป็นยกเลิก
               </p>
               <div className="flex gap-2">
                 <Button
@@ -124,7 +120,7 @@ function ActionButtons({ order }: { order: WorkOrder }) {
                 </Button>
               </div>
             </div>
-          )}
+          ))}
         </>
       )}
 

@@ -13,7 +13,7 @@ const WORK_ORDER_CONFIG: Record<WorkOrderStatus, BadgeConfig> = {
     className: 'bg-[--status-scheduled-bg] text-[--status-scheduled] border-slate-200',
   },
   INSTALLING: {
-    label: 'กำลังติดตั้ง',
+    label: 'รอดำเนินการ',
     className: 'bg-[--status-installing-bg] text-[--status-installing] border-blue-200',
   },
   ACTIVE: {

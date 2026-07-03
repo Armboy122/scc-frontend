@@ -6,6 +6,17 @@ import { useStock } from '@/hooks/useStock'
 import { useWorkOrders } from '@/hooks/useWorkOrders'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
+import { StatusBadge } from '@/components/ui/StatusBadge'
+import type { WorkOrderStatus } from '@/lib/types'
+
+const REPORT_STATUSES: WorkOrderStatus[] = [
+  'SCHEDULED',
+  'ACTIVE',
+  'REMOVAL_DUE',
+  'REMOVING',
+  'COMPLETED',
+  'CANCELLED',
+]
 
 export default function ReportsPage() {
   const { user } = useAuth()
@@ -25,6 +36,11 @@ export default function ReportsPage() {
   const installed = stock.reduce((sum, row) => sum + row.installed, 0)
   const utilization = total > 0 ? Math.round((installed / total) * 100) : 0
   const activeOrders = orders.filter((order) => order.status === 'ACTIVE' || order.status === 'REMOVAL_DUE').length
+  const cancelledOrders = orders.filter((order) => order.status === 'CANCELLED').length
+  const statusCounts = REPORT_STATUSES.map((status) => ({
+    status,
+    count: orders.filter((order) => order.status === status).length,
+  }))
 
   return (
     <div className="page-padding max-w-6xl mx-auto">
@@ -39,7 +55,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3 mb-5">
+      <div className="grid gap-3 sm:grid-cols-4 mb-5">
         <Card>
           <p className="text-xs text-gray-500">อัตราใช้งาน</p>
           <p className="font-mono text-3xl font-bold text-pea-700 mt-2">{utilization}%</p>
@@ -52,7 +68,26 @@ export default function ReportsPage() {
           <p className="text-xs text-gray-500">ฉนวนรวม</p>
           <p className="font-mono text-3xl font-bold text-gray-900 mt-2">{total}</p>
         </Card>
+        <Card>
+          <p className="text-xs text-gray-500">ใบงานยกเลิก</p>
+          <p className="font-mono text-3xl font-bold text-gray-700 mt-2">{cancelledOrders}</p>
+        </Card>
       </div>
+
+      <Card className="mb-5">
+        <div className="flex items-center gap-2 mb-5">
+          <BarChart3 className="w-5 h-5 text-pea-600" aria-hidden />
+          <h2 className="font-semibold text-gray-900">จำนวนใบงานตามสถานะ</h2>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {statusCounts.map(({ status, count }) => (
+            <div key={status} className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
+              <StatusBadge status={status} size="sm" />
+              <span className="font-mono text-lg font-bold text-gray-900">{count}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
 
       <Card>
         <div className="flex items-center gap-2 mb-5">

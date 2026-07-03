@@ -50,10 +50,10 @@ export default function DashboardPage() {
   const isLoading = ordersLoading || stockLoading
 
   const scheduled   = allOrders.filter((o) => o.status === 'SCHEDULED').length
-  const installing  = allOrders.filter((o) => o.status === 'INSTALLING').length
   const active      = allOrders.filter((o) => o.status === 'ACTIVE').length
   const removalDue  = allOrders.filter((o) => o.status === 'REMOVAL_DUE').length
   const removing    = allOrders.filter((o) => o.status === 'REMOVING').length
+  const cancelled   = allOrders.filter((o) => o.status === 'CANCELLED').length
 
   const totalStock = stock.reduce((s, r) => s + r.inStock, 0)
   const totalInstalled = stock.reduce((s, r) => s + r.installed, 0)
@@ -117,10 +117,10 @@ export default function DashboardPage() {
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
             <SummaryCard label="รอดำเนินการ" value={scheduled} icon={Clock} iconClass="text-slate-600" bgClass="bg-slate-50" />
-            <SummaryCard label="กำลังติดตั้ง" value={installing} icon={Package} iconClass="text-blue-600" bgClass="bg-blue-50" />
             <SummaryCard label="ใช้งานอยู่" value={active} icon={CheckCircle2} iconClass="text-green-600" bgClass="bg-green-50" />
             <SummaryCard label="ถึงกำหนดถอด" value={removalDue} icon={AlertTriangle} iconClass="text-orange-600" bgClass="bg-orange-50" />
             <SummaryCard label="กำลังถอด" value={removing} icon={Package} iconClass="text-violet-600" bgClass="bg-violet-50" />
+            <SummaryCard label="ยกเลิก" value={cancelled} icon={AlertTriangle} iconClass="text-gray-500" bgClass="bg-gray-50" />
           </div>
 
           {/* Overdue */}

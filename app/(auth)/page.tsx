@@ -12,11 +12,11 @@ import type { WorkOrderStatus } from '@/lib/types'
 const STATUS_FILTERS: { label: string; value: WorkOrderStatus | 'ALL' }[] = [
   { label: 'ทั้งหมด',       value: 'ALL' },
   { label: 'รอดำเนินการ',   value: 'SCHEDULED' },
-  { label: 'กำลังติดตั้ง',  value: 'INSTALLING' },
   { label: 'ใช้งานอยู่',    value: 'ACTIVE' },
   { label: 'ถึงกำหนดถอด',  value: 'REMOVAL_DUE' },
   { label: 'กำลังถอด',      value: 'REMOVING' },
   { label: 'เสร็จสิ้น',     value: 'COMPLETED' },
+  { label: 'ยกเลิก',        value: 'CANCELLED' },
 ]
 
 export default function WorkOrdersPage() {

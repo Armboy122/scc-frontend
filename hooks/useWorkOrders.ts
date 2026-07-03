@@ -78,7 +78,7 @@ export function useCreateWorkOrder() {
   })
 }
 
-// ─── Start work (SCHEDULED → INSTALLING) ────────────────────────────────────
+// ─── Legacy start metadata (does not create an intermediate install status) ───
 
 export function useStartWorkOrder() {
   const qc = useQueryClient()
