@@ -4,25 +4,25 @@ import type { StockSummary } from '@/lib/types'
 
 const KEYS = {
   all: ['stock'] as const,
-  summary: (officeId?: string) => [...KEYS.all, 'summary', officeId] as const,
+  summary: (officeId?: string, installDate?: string) => [...KEYS.all, 'summary', officeId, installDate] as const,
 }
 
-export function useStock(officeId?: string) {
+export function useStock(officeId?: string, installDate?: string) {
   return useQuery({
-    queryKey: KEYS.summary(officeId),
+    queryKey: KEYS.summary(officeId, installDate),
     queryFn: async () => {
-      const params = officeId ? { officeId } : undefined
+      const params = { officeId, installDate }
       const res = await api.get<StockSummary[]>('/stock', params)
       return res.data ?? []
     },
   })
 }
 
-export function useOfficeStock(officeId: string) {
+export function useOfficeStock(officeId: string, installDate?: string) {
   return useQuery({
-    queryKey: KEYS.summary(officeId),
+    queryKey: KEYS.summary(officeId, installDate),
     queryFn: async () => {
-      const res = await api.get<StockSummary>(`/stock/${officeId}`)
+      const res = await api.get<StockSummary>(`/stock/${officeId}`, { installDate })
       return res.data ?? null
     },
     enabled: Boolean(officeId),

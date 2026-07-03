@@ -43,7 +43,6 @@ export default function NewWorkOrderPage() {
   const { user } = useAuth()
   const router = useRouter()
   const createMutation = useCreateWorkOrder()
-  const { data: stock } = useOfficeStock(user?.officeId ?? '')
   const [gpsCoords, setGpsCoords] = useState<GpsCoords | null>(null)
 
   const {
@@ -60,6 +59,8 @@ export default function NewWorkOrderPage() {
   const installDate = watch('installDate')
   const removalDate = watch('removalDate')
   const plannedQty = watch('plannedQty')
+  const stockInstallDate = installDate ? toApiDate(installDate) : undefined
+  const { data: stock } = useOfficeStock(user?.officeId ?? '', stockInstallDate)
 
   const rentalDays =
     installDate && removalDate
@@ -71,8 +72,8 @@ export default function NewWorkOrderPage() {
         )
       : null
 
-  const inStock = stock?.inStock ?? null
-  const stockWarning = inStock !== null && plannedQty > inStock
+  const availableForWorkOrder = stock?.availableForWorkOrder ?? stock?.inStock ?? null
+  const stockWarning = availableForWorkOrder !== null && plannedQty > availableForWorkOrder
 
   const onSubmit = async (data: NewWorkOrderForm) => {
     if (!user?.officeId) return
@@ -124,11 +125,16 @@ export default function NewWorkOrderPage() {
           )}
           <div>
             <p className={['text-sm font-medium', stockWarning ? 'text-orange-800' : 'text-green-800'].join(' ')}>
-              คลังของสำนักงาน: <strong>{stock.inStock}</strong> ชิ้น
+              คงเหลือพร้อมสร้างใบงาน{installDate ? 'ตามวันติดตั้ง' : ''}: <strong>{availableForWorkOrder}</strong> ชิ้น
             </p>
+            {stock.reservedPlanned > 0 && (
+              <p className="text-xs text-gray-600 mt-0.5">
+                ในคลังจริง {stock.inStock} ชิ้น · กันไว้ในใบงานรอดำเนินการวันเดียวกัน {stock.reservedPlanned} ชิ้น
+              </p>
+            )}
             {stockWarning && (
               <p className="text-xs text-orange-700 mt-0.5">
-                จำนวนที่ต้องการเกินกว่าสต็อกในคลัง
+                จำนวนที่ต้องการเกินกว่าคงเหลือหลังหักใบงานรอดำเนินการ
               </p>
             )}
           </div>

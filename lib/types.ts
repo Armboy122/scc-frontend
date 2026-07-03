@@ -96,6 +96,8 @@ export interface StockSummary {
   officeId: string
   office?: Office
   inStock: number
+  reservedPlanned: number
+  availableForWorkOrder: number
   installed: number
   onLoanOut: number
   onLoanIn: number
