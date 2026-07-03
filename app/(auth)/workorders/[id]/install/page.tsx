@@ -11,6 +11,7 @@ import { CoverScanList, type ScannedCover } from '@/components/feature/CoverScan
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
+import { FeedbackDialog } from '@/components/ui/FeedbackDialog'
 
 export default function InstallPage({
   params,
@@ -28,6 +29,12 @@ export default function InstallPage({
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
   const [isSubmittingInstall, setIsSubmittingInstall] = useState(false)
+  const [feedback, setFeedback] = useState<{
+    tone: 'success' | 'error'
+    title: string
+    message: string
+    onClose?: () => void
+  } | null>(null)
 
   useEffect(() => {
     if (order && order.status !== 'SCHEDULED') {
@@ -66,10 +73,22 @@ export default function InstallPage({
           coverCodes: scannedCovers.map((c) => c.code),
         },
       })
-      router.refresh()
-      router.replace(`/workorders/${id}`)
-    } catch {
-      // error shown via mutation.error
+      setFeedback({
+        tone: 'success',
+        title: 'บันทึกงานติดตั้งสำเร็จ',
+        message: `ติดตั้งฉนวน ${scannedCovers.length} ชิ้นเรียบร้อยแล้ว สถานะใบงานจะเปลี่ยนเป็นติดตั้ง`,
+        onClose: () => {
+          router.refresh()
+          router.replace(`/workorders/${id}`)
+        },
+      })
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'เกิดข้อผิดพลาด กรุณาลองใหม่'
+      setFeedback({
+        tone: 'error',
+        title: 'บันทึกงานติดตั้งไม่สำเร็จ',
+        message,
+      })
       setIsSubmittingInstall(false)
     } finally {
       setConfirmOpen(false)
@@ -92,6 +111,7 @@ export default function InstallPage({
   const submitLocked = isSubmittingInstall || submitInstall.isPending || order.status !== 'SCHEDULED'
 
   return (
+    <>
     <div className="page-padding max-w-lg mx-auto space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -205,5 +225,19 @@ export default function InstallPage({
         </Card>
       )}
     </div>
+    {feedback && (
+      <FeedbackDialog
+        open
+        tone={feedback.tone}
+        title={feedback.title}
+        message={feedback.message}
+        onClose={() => {
+          const close = feedback.onClose
+          setFeedback(null)
+          close?.()
+        }}
+      />
+    )}
+    </>
   )
 }

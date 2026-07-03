@@ -10,6 +10,7 @@ import { CoverScanList, type ScannedCover } from '@/components/feature/CoverScan
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
+import { FeedbackDialog } from '@/components/ui/FeedbackDialog'
 
 export default function RemovePage({
   params,
@@ -26,6 +27,12 @@ export default function RemovePage({
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
   const [isSubmittingRemove, setIsSubmittingRemove] = useState(false)
+  const [feedback, setFeedback] = useState<{
+    tone: 'success' | 'error'
+    title: string
+    message: string
+    onClose?: () => void
+  } | null>(null)
 
   useEffect(() => {
     if (order && order.status !== 'REMOVING') {
@@ -60,10 +67,22 @@ export default function RemovePage({
           coverCodes: removedCovers.map((c) => c.code),
         },
       })
-      router.refresh()
-      router.replace(`/workorders/${id}`)
-    } catch {
-      // error shown via mutation.error
+      setFeedback({
+        tone: 'success',
+        title: 'ปิดงานสำเร็จ',
+        message: `ถอดฉนวนครบ ${removedCovers.length} ชิ้นแล้ว สถานะใบงานจะเปลี่ยนเป็นเสร็จสิ้น`,
+        onClose: () => {
+          router.refresh()
+          router.replace(`/workorders/${id}`)
+        },
+      })
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'เกิดข้อผิดพลาด กรุณาลองใหม่'
+      setFeedback({
+        tone: 'error',
+        title: 'ปิดงานไม่สำเร็จ',
+        message,
+      })
       setIsSubmittingRemove(false)
     } finally {
       setConfirmOpen(false)
@@ -87,7 +106,8 @@ export default function RemovePage({
   const submitLocked = isSubmittingRemove || submitRemove.isPending || order.status !== 'REMOVING'
 
   return (
-    <div className="page-padding max-w-lg mx-auto space-y-5">
+    <>
+      <div className="page-padding max-w-lg mx-auto space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
@@ -211,6 +231,20 @@ export default function RemovePage({
           )}
         </Card>
       )}
-    </div>
+      </div>
+      {feedback && (
+        <FeedbackDialog
+          open
+          tone={feedback.tone}
+          title={feedback.title}
+          message={feedback.message}
+          onClose={() => {
+            const close = feedback.onClose
+            setFeedback(null)
+            close?.()
+          }}
+        />
+      )}
+    </>
   )
 }

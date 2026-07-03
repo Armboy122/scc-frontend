@@ -31,7 +31,7 @@ const WORK_ORDER_CONFIG: Record<WorkOrderStatus, BadgeConfig> = {
     className: 'bg-[--status-removing-bg] text-[--status-removing] border-violet-200',
   },
   COMPLETED: {
-    label: 'ครบกำหนด',
+    label: 'เสร็จสิ้น',
     className: 'bg-[--status-completed-bg] text-[--status-completed] border-emerald-200',
   },
   CANCELLED: {

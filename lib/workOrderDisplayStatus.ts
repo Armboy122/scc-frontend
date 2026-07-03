@@ -6,6 +6,7 @@ export type WorkOrderDisplayStatus =
   | 'DUE_SOON'
   | 'DUE_TODAY'
   | 'OVERDUE'
+  | 'COMPLETED'
 
 export interface WorkOrderDisplayStatusConfig {
   value: WorkOrderDisplayStatus
@@ -42,6 +43,11 @@ export const WORK_ORDER_DISPLAY_STATUS_CONFIG: Record<WorkOrderDisplayStatus, Wo
     label: 'เกินกำหนด',
     className: 'bg-red-50 text-red-700 border-red-200',
   },
+  COMPLETED: {
+    value: 'COMPLETED',
+    label: 'เสร็จสิ้น',
+    className: 'bg-[--status-completed-bg] text-[--status-completed] border-emerald-200',
+  },
 }
 
 function startOfDay(value: Date): number {
@@ -56,6 +62,10 @@ function parseDateOnly(iso?: string): number | null {
 }
 
 export function getWorkOrderDisplayStatus(order: WorkOrder, now: Date = new Date()): WorkOrderDisplayStatus {
+  if (order.status === 'COMPLETED') {
+    return 'COMPLETED'
+  }
+
   if (order.status === 'SCHEDULED' || order.status === 'INSTALLING') {
     return 'PENDING_INSTALL'
   }

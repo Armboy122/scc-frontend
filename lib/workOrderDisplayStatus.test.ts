@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { WorkOrder } from './types'
-import { getWorkOrderDisplayStatus } from './workOrderDisplayStatus'
+import { getWorkOrderDisplayStatus, getWorkOrderDisplayStatusConfig } from './workOrderDisplayStatus'
 
 function makeWorkOrder(overrides: Partial<WorkOrder> = {}): WorkOrder {
   return {
@@ -32,5 +32,15 @@ describe('getWorkOrderDisplayStatus', () => {
 
   it('does not expose technical removing status as a separate display state', () => {
     expect(getWorkOrderDisplayStatus(makeWorkOrder({ status: 'REMOVING', removalDate: '2026-07-20T00:00:00+07:00' }), now)).toBe('INSTALLED')
+  })
+
+  it('always displays completed work orders as เสร็จสิ้น even when removal date is due', () => {
+    const order = makeWorkOrder({
+      status: 'COMPLETED',
+      removalDate: '2026-07-04T00:00:00+07:00',
+    })
+
+    expect(getWorkOrderDisplayStatus(order, now)).toBe('COMPLETED')
+    expect(getWorkOrderDisplayStatusConfig(order, now).label).toBe('เสร็จสิ้น')
   })
 })
