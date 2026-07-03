@@ -125,16 +125,16 @@ export default function NewWorkOrderPage() {
           )}
           <div>
             <p className={['text-sm font-medium', stockWarning ? 'text-orange-800' : 'text-green-800'].join(' ')}>
-              ฉนวนพร้อมติดตั้งหลังหักใบงานรอดำเนินการ: <strong>{availableForWorkOrder}</strong> ชิ้น
+              ฉนวนพร้อมติดตั้งหลังหักใบงานรอติดตั้ง: <strong>{availableForWorkOrder}</strong> ชิ้น
             </p>
             {stock.reservedPlanned > 0 && (
               <p className="text-xs text-gray-600 mt-0.5">
-                ในคลังจริง {stock.inStock} ชิ้น · กันไว้ในใบงานรอดำเนินการ {stock.reservedPlanned} ชิ้น
+                พร้อมติดตั้งจริง {stock.inStock} ชิ้น · กันไว้ในใบงานรอติดตั้ง {stock.reservedPlanned} ชิ้น
               </p>
             )}
             {stockWarning && (
               <p className="text-xs text-orange-700 mt-0.5">
-                จำนวนที่ต้องการเกินกว่าคงเหลือหลังหักใบงานรอดำเนินการ
+                จำนวนที่ต้องการเกินกว่าคงเหลือหลังหักใบงานรอติดตั้ง
               </p>
             )}
           </div>

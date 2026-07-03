@@ -13,9 +13,9 @@ import type { CoverStatus } from '@/lib/types'
 
 const STATUS_OPTIONS: { label: string; value: CoverStatus | 'ALL' }[] = [
   { label: 'ทั้งหมด', value: 'ALL' },
-  { label: 'ในคลัง',  value: 'IN_STOCK' },
+  { label: 'พร้อมติดตั้ง',  value: 'IN_STOCK' },
   { label: 'ติดตั้ง',  value: 'INSTALLED' },
-  { label: 'เลิกใช้',  value: 'RETIRED' },
+  { label: 'ปลดออก',  value: 'RETIRED' },
 ]
 
 export default function CoversPage() {

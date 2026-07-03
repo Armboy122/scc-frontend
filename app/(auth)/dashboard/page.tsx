@@ -6,6 +6,7 @@ import { useStock } from '@/hooks/useStock'
 import { Card } from '@/components/ui/Card'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import type { WorkOrder } from '@/lib/types'
+import { getWorkOrderDisplayStatus } from '@/lib/workOrderDisplayStatus'
 
 interface SummaryCardProps {
   label: string
@@ -49,34 +50,24 @@ export default function DashboardPage() {
 
   const isLoading = ordersLoading || stockLoading
 
-  const scheduled   = allOrders.filter((o) => o.status === 'SCHEDULED').length
-  const active      = allOrders.filter((o) => o.status === 'ACTIVE').length
-  const removalDue  = allOrders.filter((o) => o.status === 'REMOVAL_DUE').length
-  const removing    = allOrders.filter((o) => o.status === 'REMOVING').length
-  const cancelled   = allOrders.filter((o) => o.status === 'CANCELLED').length
+  const pendingInstall = allOrders.filter((o) => getWorkOrderDisplayStatus(o) === 'PENDING_INSTALL').length
+  const installed = allOrders.filter((o) => getWorkOrderDisplayStatus(o) === 'INSTALLED').length
+  const dueSoonCount = allOrders.filter((o) => getWorkOrderDisplayStatus(o) === 'DUE_SOON').length
+  const dueTodayCount = allOrders.filter((o) => getWorkOrderDisplayStatus(o) === 'DUE_TODAY').length
+  const overdueCount = allOrders.filter((o) => getWorkOrderDisplayStatus(o) === 'OVERDUE').length
 
   const totalStock = stock.reduce((s, r) => s + r.inStock, 0)
   const totalInstalled = stock.reduce((s, r) => s + r.installed, 0)
 
-  // Due soon: within 7 days
-  const now = Date.now()
   const dueSoon: WorkOrder[] = allOrders
-    .filter((o) => o.status === 'ACTIVE' || o.status === 'REMOVAL_DUE')
-    .filter((o) => {
-      const removalTime = timestamp(o.removalDate)
-      if (removalTime === null) return false
-      const daysLeft = Math.round((removalTime - now) / 86_400_000)
-      return daysLeft >= 0 && daysLeft <= 7
-    })
+    .filter((o) => getWorkOrderDisplayStatus(o) === 'DUE_SOON' || getWorkOrderDisplayStatus(o) === 'DUE_TODAY')
     .sort((a, b) => (timestamp(a.removalDate) ?? 0) - (timestamp(b.removalDate) ?? 0))
 
   const overdue: WorkOrder[] = allOrders
-    .filter((o) => o.status === 'ACTIVE' || o.status === 'REMOVAL_DUE')
-    .filter((o) => {
-      const removalTime = timestamp(o.removalDate)
-      return removalTime !== null && removalTime < now
-    })
+    .filter((o) => getWorkOrderDisplayStatus(o) === 'OVERDUE')
     .sort((a, b) => (timestamp(a.removalDate) ?? 0) - (timestamp(b.removalDate) ?? 0))
+
+  const now = Date.now()
 
   return (
     <div className="page-padding max-w-6xl mx-auto">
@@ -116,11 +107,11 @@ export default function DashboardPage() {
             ใบงานตามสถานะ
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
-            <SummaryCard label="รอดำเนินการ" value={scheduled} icon={Clock} iconClass="text-slate-600" bgClass="bg-slate-50" />
-            <SummaryCard label="ใช้งานอยู่" value={active} icon={CheckCircle2} iconClass="text-green-600" bgClass="bg-green-50" />
-            <SummaryCard label="ถึงกำหนดถอด" value={removalDue} icon={AlertTriangle} iconClass="text-orange-600" bgClass="bg-orange-50" />
-            <SummaryCard label="กำลังถอด" value={removing} icon={Package} iconClass="text-violet-600" bgClass="bg-violet-50" />
-            <SummaryCard label="ยกเลิก" value={cancelled} icon={AlertTriangle} iconClass="text-gray-500" bgClass="bg-gray-50" />
+            <SummaryCard label="รอติดตั้ง" value={pendingInstall} icon={Clock} iconClass="text-slate-600" bgClass="bg-slate-50" />
+            <SummaryCard label="ติดตั้ง" value={installed} icon={CheckCircle2} iconClass="text-green-600" bgClass="bg-green-50" />
+            <SummaryCard label="ใกล้ครบ" value={dueSoonCount} icon={Clock} iconClass="text-orange-600" bgClass="bg-orange-50" />
+            <SummaryCard label="ครบกำหนด" value={dueTodayCount} icon={AlertTriangle} iconClass="text-amber-600" bgClass="bg-amber-50" />
+            <SummaryCard label="เกินกำหนด" value={overdueCount} icon={AlertTriangle} iconClass="text-red-600" bgClass="bg-red-50" />
           </div>
 
           {/* Overdue */}
@@ -128,7 +119,7 @@ export default function DashboardPage() {
             <Card className="border-red-200 bg-red-50 mb-4">
               <h2 className="text-sm font-semibold text-red-800 mb-3 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4" aria-hidden />
-                เกินกำหนดถอด ({overdue.length} ใบงาน)
+                เกินกำหนด ({overdue.length} ใบงาน)
               </h2>
               <ul className="space-y-2">
                 {overdue.slice(0, 5).map((o) => (
@@ -138,7 +129,7 @@ export default function DashboardPage() {
                       <span className="text-xs text-red-700 tabular-nums">
                         {formatDate(o.removalDate)}
                       </span>
-                      <StatusBadge status={o.status} size="sm" />
+                      <StatusBadge workOrder={o} size="sm" />
                     </div>
                   </li>
                 ))}
@@ -151,7 +142,7 @@ export default function DashboardPage() {
             <Card className="border-orange-200">
               <h2 className="text-sm font-semibold text-orange-800 mb-3 flex items-center gap-2">
                 <Clock className="w-4 h-4" aria-hidden />
-                ถึงกำหนดภายใน 7 วัน ({dueSoon.length} ใบงาน)
+                ใกล้ครบ/ครบกำหนด ({dueSoon.length} ใบงาน)
               </h2>
               <ul className="space-y-2">
                 {dueSoon.slice(0, 8).map((o) => {
@@ -162,9 +153,9 @@ export default function DashboardPage() {
                       <span className="font-medium text-gray-800 truncate mr-2">{o.customerName}</span>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <span className="text-xs text-orange-700 tabular-nums font-medium">
-                          {daysLeft === 0 ? 'วันนี้' : `${daysLeft} วัน`}
+                          {daysLeft <= 0 ? 'วันนี้' : `${daysLeft} วัน`}
                         </span>
-                        <StatusBadge status={o.status} size="sm" />
+                        <StatusBadge workOrder={o} size="sm" />
                       </div>
                     </li>
                   )

@@ -52,7 +52,7 @@ export function WorkOrderCard({ order }: WorkOrderCardProps) {
             <p className="text-xs text-gray-500 mt-0.5">{order.office.name}</p>
           )}
         </div>
-        <StatusBadge status={order.status} size="sm" />
+        <StatusBadge workOrder={order} size="sm" />
       </div>
 
       {/* Info row */}

@@ -1,40 +1,37 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ClipboardPlus, Filter } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useWorkOrders } from '@/hooks/useWorkOrders'
 import { WorkOrderCard } from '@/components/feature/WorkOrderCard'
 import { Button } from '@/components/ui/Button'
-import type { WorkOrderStatus } from '@/lib/types'
+import { getWorkOrderDisplayStatus, type WorkOrderDisplayStatus } from '@/lib/workOrderDisplayStatus'
 
-const STATUS_FILTERS: { label: string; value: WorkOrderStatus | 'ALL' }[] = [
-  { label: 'ทั้งหมด',       value: 'ALL' },
-  { label: 'รอดำเนินการ',   value: 'SCHEDULED' },
-  { label: 'ใช้งานอยู่',    value: 'ACTIVE' },
-  { label: 'ถึงกำหนดถอด',  value: 'REMOVAL_DUE' },
-  { label: 'กำลังถอด',      value: 'REMOVING' },
-  { label: 'เสร็จสิ้น',     value: 'COMPLETED' },
-  { label: 'ยกเลิก',        value: 'CANCELLED' },
+const STATUS_FILTERS: { label: string; value: WorkOrderDisplayStatus | 'ALL' }[] = [
+  { label: 'ทั้งหมด', value: 'ALL' },
+  { label: 'รอติดตั้ง', value: 'PENDING_INSTALL' },
+  { label: 'ติดตั้ง', value: 'INSTALLED' },
+  { label: 'ใกล้ครบ', value: 'DUE_SOON' },
+  { label: 'ครบกำหนด', value: 'DUE_TODAY' },
+  { label: 'เกินกำหนด', value: 'OVERDUE' },
 ]
 
 export default function WorkOrdersPage() {
   const { user } = useAuth()
   const router = useRouter()
-  const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | 'ALL'>('ALL')
+  const [statusFilter, setStatusFilter] = useState<WorkOrderDisplayStatus | 'ALL'>('ALL')
 
-  const params =
-    statusFilter === 'ALL'
-      ? user?.role === 'tech'
-        ? { assignedTo: user.id }
-        : undefined
-      : {
-          status: statusFilter,
-          ...(user?.role === 'tech' ? { assignedTo: user.id } : {}),
-        }
-
-  const { data: orders = [], isLoading, error } = useWorkOrders(params)
+  const params = user?.role === 'tech' ? { assignedTo: user.id } : undefined
+  const { data: allOrders = [], isLoading, error } = useWorkOrders(params)
+  const orders = useMemo(
+    () =>
+      statusFilter === 'ALL'
+        ? allOrders
+        : allOrders.filter((order) => getWorkOrderDisplayStatus(order) === statusFilter),
+    [allOrders, statusFilter],
+  )
 
   const canCreate = user?.role === 'exec' || user?.role === 'admin' || user?.role === 'tech'
 

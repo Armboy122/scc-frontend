@@ -107,6 +107,13 @@ async function request<T>(
   }
 
   // ── Parse response ───────────────────────────────────────────────────────
+  if (res.status === 204) {
+    if (!res.ok) {
+      throw new ApiError('Request failed', 'UNKNOWN', res.status)
+    }
+    return { data: null, error: null } as ApiResponse<T>
+  }
+
   let json: ApiResponse<T>
   try {
     json = (await res.json()) as ApiResponse<T>

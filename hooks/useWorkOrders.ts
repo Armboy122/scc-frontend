@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type {
   CreateWorkOrderRequest,
@@ -37,6 +37,17 @@ function normaliseWorkOrder(order: BackendWorkOrder): WorkOrder {
     gpsLat: order.gpsLat ?? undefined,
     gpsLng: order.gpsLng ?? undefined,
   }
+}
+
+async function updateWorkOrderCache(qc: QueryClient, id: string, order?: WorkOrder | null) {
+  if (order) {
+    qc.setQueryData(KEYS.detail(id), normaliseWorkOrder(order))
+  }
+
+  await Promise.all([
+    qc.invalidateQueries({ queryKey: KEYS.detail(id) }),
+    qc.invalidateQueries({ queryKey: KEYS.all }),
+  ])
 }
 
 // ─── List ─────────────────────────────────────────────────────────────────────
@@ -84,10 +95,7 @@ export function useStartWorkOrder() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api.post<WorkOrder>(`/workorders/${id}/start`),
-    onSuccess: (_data, id) => {
-      void qc.invalidateQueries({ queryKey: KEYS.detail(id) })
-      void qc.invalidateQueries({ queryKey: KEYS.all })
-    },
+    onSuccess: (res, id) => updateWorkOrderCache(qc, id, res.data),
   })
 }
 
@@ -97,10 +105,7 @@ export function useCancelWorkOrder() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api.post<WorkOrder>(`/workorders/${id}/cancel`),
-    onSuccess: (_data, id) => {
-      void qc.invalidateQueries({ queryKey: KEYS.detail(id) })
-      void qc.invalidateQueries({ queryKey: KEYS.all })
-    },
+    onSuccess: (res, id) => updateWorkOrderCache(qc, id, res.data),
   })
 }
 
@@ -115,17 +120,7 @@ export function useSubmitInstall() {
       }
       return api.post<WorkOrder>(`/workorders/${id}/submit-install`)
     },
-    onSuccess: async (res, { id }) => {
-      if (res.data) {
-        const updatedOrder = normaliseWorkOrder(res.data)
-        qc.setQueryData(KEYS.detail(id), updatedOrder)
-      }
-
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: KEYS.detail(id) }),
-        qc.invalidateQueries({ queryKey: KEYS.all }),
-      ])
-    },
+    onSuccess: (res, { id }) => updateWorkOrderCache(qc, id, res.data),
   })
 }
 
@@ -135,10 +130,7 @@ export function useStartRemoval() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api.post<WorkOrder>(`/workorders/${id}/start-removal`),
-    onSuccess: (_data, id) => {
-      void qc.invalidateQueries({ queryKey: KEYS.detail(id) })
-      void qc.invalidateQueries({ queryKey: KEYS.all })
-    },
+    onSuccess: (res, id) => updateWorkOrderCache(qc, id, res.data),
   })
 }
 
@@ -156,9 +148,6 @@ export function useSubmitRemove() {
         gpsLng: payload.longitude,
       })
     },
-    onSuccess: (_data, { id }) => {
-      void qc.invalidateQueries({ queryKey: KEYS.detail(id) })
-      void qc.invalidateQueries({ queryKey: KEYS.all })
-    },
+    onSuccess: (res, { id }) => updateWorkOrderCache(qc, id, res.data),
   })
 }

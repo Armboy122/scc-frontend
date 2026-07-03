@@ -1,4 +1,6 @@
 import type { BorrowStatus, CoverStatus, WorkOrderStatus } from '@/lib/types'
+import type { WorkOrder } from '@/lib/types'
+import { getWorkOrderDisplayStatusConfig } from '@/lib/workOrderDisplayStatus'
 
 // ─── Work order status config ─────────────────────────────────────────────────
 
@@ -9,27 +11,27 @@ interface BadgeConfig {
 
 const WORK_ORDER_CONFIG: Record<WorkOrderStatus, BadgeConfig> = {
   SCHEDULED: {
-    label: 'รอดำเนินการ',
+    label: 'รอติดตั้ง',
     className: 'bg-[--status-scheduled-bg] text-[--status-scheduled] border-slate-200',
   },
   INSTALLING: {
-    label: 'รอดำเนินการ',
+    label: 'รอติดตั้ง',
     className: 'bg-[--status-installing-bg] text-[--status-installing] border-blue-200',
   },
   ACTIVE: {
-    label: 'ใช้งานอยู่',
+    label: 'ติดตั้ง',
     className: 'bg-[--status-active-bg] text-[--status-active] border-green-200',
   },
   REMOVAL_DUE: {
-    label: 'ถึงกำหนดถอด',
+    label: 'ครบกำหนด',
     className: 'bg-[--status-removal-due-bg] text-[--status-removal-due] border-orange-200',
   },
   REMOVING: {
-    label: 'กำลังถอด',
+    label: 'ติดตั้ง',
     className: 'bg-[--status-removing-bg] text-[--status-removing] border-violet-200',
   },
   COMPLETED: {
-    label: 'เสร็จสิ้น',
+    label: 'ครบกำหนด',
     className: 'bg-[--status-completed-bg] text-[--status-completed] border-emerald-200',
   },
   CANCELLED: {
@@ -40,15 +42,15 @@ const WORK_ORDER_CONFIG: Record<WorkOrderStatus, BadgeConfig> = {
 
 const COVER_CONFIG: Record<CoverStatus, BadgeConfig> = {
   IN_STOCK: {
-    label: 'ในคลัง',
+    label: 'พร้อมติดตั้ง',
     className: 'bg-green-50 text-green-700 border-green-200',
   },
   INSTALLED: {
-    label: 'ติดตั้งแล้ว',
+    label: 'ติดตั้ง',
     className: 'bg-blue-50 text-blue-700 border-blue-200',
   },
   RETIRED: {
-    label: 'เลิกใช้',
+    label: 'ปลดออก',
     className: 'bg-gray-50 text-gray-500 border-gray-200',
   },
 }
@@ -91,6 +93,11 @@ interface WorkOrderBadgeProps {
   size?: 'sm' | 'md'
 }
 
+interface WorkOrderEntityBadgeProps {
+  workOrder: WorkOrder
+  size?: 'sm' | 'md'
+}
+
 interface CoverBadgeProps {
   coverStatus: CoverStatus
   size?: 'sm' | 'md'
@@ -101,10 +108,14 @@ interface BorrowBadgeProps {
   size?: 'sm' | 'md'
 }
 
-type StatusBadgeProps = WorkOrderBadgeProps | CoverBadgeProps | BorrowBadgeProps
+type StatusBadgeProps = WorkOrderBadgeProps | WorkOrderEntityBadgeProps | CoverBadgeProps | BorrowBadgeProps
 
 function isWorkOrderBadge(p: StatusBadgeProps): p is WorkOrderBadgeProps {
   return 'status' in p
+}
+
+function isWorkOrderEntityBadge(p: StatusBadgeProps): p is WorkOrderEntityBadgeProps {
+  return 'workOrder' in p
 }
 
 const sizeClasses = {
@@ -114,7 +125,9 @@ const sizeClasses = {
 
 export function StatusBadge(props: StatusBadgeProps) {
   const size = props.size ?? 'md'
-  const config = isWorkOrderBadge(props)
+  const config = isWorkOrderEntityBadge(props)
+    ? getWorkOrderDisplayStatusConfig(props.workOrder)
+    : isWorkOrderBadge(props)
     ? WORK_ORDER_CONFIG[props.status]
     : 'coverStatus' in props
       ? COVER_CONFIG[props.coverStatus]

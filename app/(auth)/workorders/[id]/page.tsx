@@ -144,6 +144,7 @@ function ActionButtons({ order }: { order: WorkOrder }) {
           loading={startRemovalMutation.isPending}
           onClick={async () => {
             await startRemovalMutation.mutateAsync(order.id)
+            router.refresh()
             router.push(`/workorders/${order.id}/remove`)
           }}
         >
@@ -158,7 +159,7 @@ function ActionButtons({ order }: { order: WorkOrder }) {
           variant="secondary"
           onClick={() => router.push(`/workorders/${order.id}/remove`)}
         >
-          ดำเนินการถอด
+          ถอดฉนวน
         </Button>
       )}
     </div>
@@ -210,7 +211,7 @@ export default function WorkOrderDetailPage({
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold text-gray-900 truncate">{order.customerName}</h1>
         </div>
-        <StatusBadge status={order.status} />
+        <StatusBadge workOrder={order} />
       </div>
 
       {/* Info card */}

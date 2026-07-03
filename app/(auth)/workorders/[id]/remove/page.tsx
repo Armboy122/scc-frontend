@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState } from 'react'
+import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, ArrowLeft, CheckCircle2, MapPin } from 'lucide-react'
 import { useWorkOrder, useSubmitRemove } from '@/hooks/useWorkOrders'
@@ -26,6 +26,13 @@ export default function RemovePage({
   const [gps, setGps] = useState<GpsCoords | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
+  const [isSubmittingRemove, setIsSubmittingRemove] = useState(false)
+
+  useEffect(() => {
+    if (order && order.status !== 'REMOVING') {
+      router.replace(`/workorders/${id}`)
+    }
+  }, [id, order, router])
 
   const addCode = (code: string) => {
     const trimmed = code.trim()
@@ -44,6 +51,9 @@ export default function RemovePage({
   }
 
   const handleSubmit = async () => {
+    if (isSubmittingRemove || submitRemove.isPending) return
+
+    setIsSubmittingRemove(true)
     try {
       await submitRemove.mutateAsync({
         id,
@@ -52,9 +62,11 @@ export default function RemovePage({
           ...(gps ? { latitude: gps.latitude, longitude: gps.longitude } : {}),
         },
       })
+      router.refresh()
       router.replace(`/workorders/${id}`)
     } catch {
       // error shown via mutation.error
+      setIsSubmittingRemove(false)
     } finally {
       setConfirmOpen(false)
     }
@@ -73,7 +85,8 @@ export default function RemovePage({
   const totalQty = order.actualQty ?? order.plannedQty
   const removedQty = removedCovers.length
   const allRemoved = removedQty >= totalQty
-  const progress = Math.min(1, removedQty / totalQty)
+  const progress = totalQty > 0 ? Math.min(1, removedQty / totalQty) : 0
+  const submitLocked = isSubmittingRemove || submitRemove.isPending || order.status !== 'REMOVING'
 
   return (
     <div className="page-padding max-w-lg mx-auto space-y-5">
@@ -152,6 +165,7 @@ export default function RemovePage({
             onChange={(e) => setManualCode(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleManualAdd() }}}
             error={scanError ?? undefined}
+            disabled={submitLocked}
           />
         </div>
         <Button
@@ -160,7 +174,7 @@ export default function RemovePage({
           size="md"
           className="flex-shrink-0 h-12 self-start"
           onClick={handleManualAdd}
-          disabled={!manualCode.trim()}
+          disabled={!manualCode.trim() || submitLocked}
         >
           เพิ่ม
         </Button>
@@ -171,7 +185,7 @@ export default function RemovePage({
         <h2 className="text-sm font-semibold text-gray-700 mb-3">
           ถอดแล้ว ({removedQty} ชิ้น)
         </h2>
-        <CoverScanList covers={removedCovers} onRemove={(code) => setRemovedCovers((prev) => prev.filter((c) => c.code !== code))} />
+        <CoverScanList covers={removedCovers} onRemove={(code) => setRemovedCovers((prev) => prev.filter((c) => c.code !== code))} readOnly={submitLocked} />
       </Card>
 
       {/* GPS capture */}
@@ -186,11 +200,11 @@ export default function RemovePage({
           <Button
             size="xl"
             fullWidth
-            disabled={!allRemoved}
+            disabled={!allRemoved || submitLocked}
             onClick={() => setConfirmOpen(true)}
             leftIcon={<CheckCircle2 className="w-5 h-5" />}
           >
-            ปิดงาน ({removedQty}/{totalQty} ชิ้น)
+            {submitLocked ? 'กำลังปิดงาน...' : `ปิดงาน (${removedQty}/${totalQty} ชิ้น)`}
           </Button>
           {!allRemoved && (
             <p className="text-xs text-center text-gray-400">
@@ -204,13 +218,14 @@ export default function RemovePage({
             ยืนยันการถอดฉนวนและปิดงาน?
           </p>
           <div className="flex gap-2">
-            <Button variant="ghost" size="lg" className="flex-1" onClick={() => setConfirmOpen(false)}>
+            <Button variant="ghost" size="lg" className="flex-1" onClick={() => setConfirmOpen(false)} disabled={submitLocked}>
               ยกเลิก
             </Button>
             <Button
               size="lg"
               className="flex-1"
-              loading={submitRemove.isPending}
+              loading={submitLocked}
+              disabled={submitLocked}
               onClick={() => void handleSubmit()}
             >
               ปิดงาน

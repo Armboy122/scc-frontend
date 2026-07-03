@@ -60,7 +60,7 @@ export default function StockPage() {
                     <dd className="font-bold text-green-700 text-lg tabular-nums">{stock.inStock}</dd>
                   </div>
                   <div className="bg-blue-50 rounded-lg p-2.5 text-center">
-                    <dt className="text-xs text-gray-500 mb-1">ติดตั้งแล้ว</dt>
+                    <dt className="text-xs text-gray-500 mb-1">ติดตั้ง</dt>
                     <dd className="font-bold text-blue-700 text-lg tabular-nums">{stock.installed}</dd>
                   </div>
                   <div className="bg-orange-50 rounded-lg p-2.5 text-center">
@@ -82,8 +82,8 @@ export default function StockPage() {
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">สำนักงาน</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700">ในคลัง</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700">ติดตั้งแล้ว</th>
+                  <th className="text-right px-4 py-3 font-semibold text-gray-700">พร้อมติดตั้ง</th>
+                  <th className="text-right px-4 py-3 font-semibold text-gray-700">ติดตั้ง</th>
                   <th className="text-right px-4 py-3 font-semibold text-gray-700">ให้ยืม</th>
                   <th className="text-right px-4 py-3 font-semibold text-gray-700">ยืมมา</th>
                   <th className="text-right px-4 py-3 font-semibold text-gray-700">ทั้งหมด</th>
