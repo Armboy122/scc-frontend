@@ -2,12 +2,13 @@
 
 import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { useWorkOrder, useSubmitInstall } from '@/hooks/useWorkOrders'
 import { ApiError } from '@/lib/api'
+import { triggerScanFeedback } from '@/lib/scanFeedback'
 import { QrScanner } from '@/components/feature/QrScanner'
-import { PhotoCapture } from '@/components/feature/PhotoCapture'
 import { CoverScanList, type ScannedCover } from '@/components/feature/CoverScanList'
+import { EvidencePhotoNotice } from '@/components/feature/EvidencePhotoNotice'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
@@ -25,9 +26,9 @@ export default function InstallPage({
 
   const [scannedCovers, setScannedCovers] = useState<ScannedCover[]>([])
   const [manualCode, setManualCode] = useState('')
-  const [photo, setPhoto] = useState<File | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
+  const [scanFeedback, setScanFeedback] = useState<{ tone: 'success' | 'warning' | 'error'; message: string } | null>(null)
   const [isSubmittingInstall, setIsSubmittingInstall] = useState(false)
   const [feedback, setFeedback] = useState<{
     tone: 'success' | 'error'
@@ -46,10 +47,15 @@ export default function InstallPage({
     const trimmed = code.trim()
     if (!trimmed) return
     if (scannedCovers.some((c) => c.code === trimmed)) {
-      setScanError(`รหัส ${trimmed} สแกนแล้ว`)
+      const message = `รหัส ${trimmed} สแกนแล้ว`
+      setScanError(message)
+      setScanFeedback({ tone: 'warning', message })
+      triggerScanFeedback({ tone: 'warning' })
       return
     }
     setScanError(null)
+    setScanFeedback({ tone: 'success', message: `เพิ่ม ${trimmed} แล้ว` })
+    triggerScanFeedback({ tone: 'success' })
     setScannedCovers((prev) => [...prev, { code: trimmed, scannedAt: new Date() }])
   }
 
@@ -84,6 +90,8 @@ export default function InstallPage({
       })
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'เกิดข้อผิดพลาด กรุณาลองใหม่'
+      setScanFeedback({ tone: 'error', message })
+      triggerScanFeedback({ tone: 'error' })
       setFeedback({
         tone: 'error',
         title: 'บันทึกงานติดตั้งไม่สำเร็จ',
@@ -108,6 +116,13 @@ export default function InstallPage({
   const plannedQty = order.plannedQty
   const scannedQty = scannedCovers.length
   const progress = plannedQty > 0 ? Math.min(1, scannedQty / plannedQty) : 0
+  const isOverScanned = plannedQty > 0 && scannedQty > plannedQty
+  const overScanQty = Math.max(0, scannedQty - plannedQty)
+  const scanFeedbackClass = scanFeedback?.tone === 'success'
+    ? 'border-green-200 bg-green-50 text-green-800'
+    : scanFeedback?.tone === 'warning'
+      ? 'border-orange-200 bg-orange-50 text-orange-800'
+      : 'border-red-200 bg-red-50 text-red-800'
   const submitLocked = isSubmittingInstall || submitInstall.isPending || order.status !== 'SCHEDULED'
 
   return (
@@ -132,20 +147,31 @@ export default function InstallPage({
       <Card padding="sm">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-gray-700">ความคืบหน้า</span>
-          <span className="text-sm font-bold text-pea-600 tabular-nums">
-            {scannedQty} / {plannedQty} ชิ้น
+          <span className={['text-sm font-bold tabular-nums', isOverScanned ? 'text-orange-600' : 'text-pea-600'].join(' ')}>
+            {scannedQty} / {plannedQty} ชิ้นตามแผน
           </span>
         </div>
         <div className="w-full bg-gray-100 rounded-full h-2" role="progressbar" aria-valuenow={scannedQty} aria-valuemax={plannedQty}>
           <div
-            className="h-2 rounded-full bg-pea-600 transition-all duration-300"
+            className={['h-2 rounded-full transition-all duration-300', isOverScanned ? 'bg-orange-500' : 'bg-pea-600'].join(' ')}
             style={{ width: `${progress * 100}%` }}
           />
         </div>
+        {isOverScanned && (
+          <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-orange-700" role="status">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" aria-hidden />
+            สแกนเกินแผน {overScanQty} ชิ้น — ระบบจะตัด stock ตามจำนวนที่สแกนจริง
+          </p>
+        )}
       </Card>
 
       {/* QR Scanner */}
       <QrScanner onScan={addCode} />
+      {scanFeedback && (
+        <div className={['rounded-2xl border px-4 py-3 text-sm font-medium shadow-sm', scanFeedbackClass].join(' ')} role="status">
+          {scanFeedback.message}
+        </div>
+      )}
 
       {/* Manual code input */}
       <div className="flex gap-2">
@@ -179,11 +205,8 @@ export default function InstallPage({
         <CoverScanList covers={scannedCovers} onRemove={removeCode} readOnly={submitLocked} />
       </Card>
 
-      {/* Photo capture */}
-      <div>
-        <p className="text-sm font-medium text-gray-700 mb-2">ถ่ายภาพประกอบ</p>
-        <PhotoCapture value={photo} onChange={setPhoto} disabled={submitLocked} />
-      </div>
+      {/* Evidence photo notice */}
+      <EvidencePhotoNotice flow="install" />
 
       {/* Submit */}
       {!confirmOpen ? (

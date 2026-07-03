@@ -57,7 +57,7 @@ export function CoverScanList({ covers, onRemove, readOnly = false }: CoverScanL
             <button
               type="button"
               onClick={() => onRemove(cover.code)}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+              className="min-h-11 min-w-11 rounded-xl text-gray-500 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 inline-flex items-center justify-center"
               aria-label={`ยกเลิกสแกน ${cover.code}`}
             >
               <X className="w-4 h-4" aria-hidden />

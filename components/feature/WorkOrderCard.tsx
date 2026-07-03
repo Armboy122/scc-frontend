@@ -1,8 +1,12 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Calendar, MapPin, Package, Phone } from 'lucide-react'
+import { Calendar, MapPin, Package, Phone, Route, Wrench } from 'lucide-react'
+import { useStartRemoval } from '@/hooks/useWorkOrders'
+import { useAuth } from '@/lib/auth'
+import { getWorkOrderDisplayStatus } from '@/lib/workOrderDisplayStatus'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { Button } from '@/components/ui/Button'
 import type { WorkOrder } from '@/lib/types'
 
 interface WorkOrderCardProps {
@@ -30,7 +34,38 @@ function daysBetween(a?: string, b?: string): number | null {
 
 export function WorkOrderCard({ order }: WorkOrderCardProps) {
   const router = useRouter()
+  const { user } = useAuth()
+  const startRemovalMutation = useStartRemoval()
   const rentalDays = daysBetween(order.installDate, order.removalDate)
+  const displayStatus = getWorkOrderDisplayStatus(order)
+  const isTech = user?.role === 'tech'
+  const canStartInstall = isTech && (order.status === 'SCHEDULED' || order.status === 'INSTALLING')
+  const canStartRemoval = isTech && (displayStatus === 'DUE_TODAY' || displayStatus === 'OVERDUE' || order.status === 'REMOVING') && order.status !== 'COMPLETED'
+  const mapsHref = order.latitude && order.longitude
+    ? `https://maps.google.com/?q=${order.latitude},${order.longitude}`
+    : null
+  const shouldShowNavigation = Boolean(mapsHref && (displayStatus === 'DUE_TODAY' || displayStatus === 'OVERDUE'))
+
+  const handlePrimaryAction = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    if (canStartInstall) {
+      router.push(`/workorders/${order.id}/install`)
+      return
+    }
+    if (order.status === 'REMOVING') {
+      router.push(`/workorders/${order.id}/remove`)
+      return
+    }
+    if (canStartRemoval) {
+      await startRemovalMutation.mutateAsync(order.id)
+      router.refresh()
+      router.push(`/workorders/${order.id}/remove`)
+    }
+  }
+
+  const handleNavigate = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.stopPropagation()
+  }
 
   return (
     <article
@@ -111,6 +146,36 @@ export function WorkOrderCard({ order }: WorkOrderCardProps) {
           </div>
         )}
       </dl>
+
+      {(canStartInstall || canStartRemoval || shouldShowNavigation) && (
+        <div className="mt-3 flex gap-2 border-t border-gray-100 pt-3">
+          {shouldShowNavigation && mapsHref && (
+            <a
+              href={mapsHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleNavigate}
+              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-pea-200 bg-white px-3 text-sm font-medium text-pea-700 transition-colors hover:bg-pea-50"
+            >
+              <Route className="h-4 w-4" aria-hidden />
+              นำทาง
+            </a>
+          )}
+          {(canStartInstall || canStartRemoval) && (
+            <Button
+              type="button"
+              size="md"
+              fullWidth
+              loading={startRemovalMutation.isPending}
+              onClick={(e) => void handlePrimaryAction(e)}
+              leftIcon={<Wrench className="h-4 w-4" />}
+              className="min-h-11 flex-1"
+            >
+              {canStartInstall ? 'เริ่มติดตั้ง' : order.status === 'REMOVING' ? 'ถอดต่อ' : 'เริ่มถอด'}
+            </Button>
+          )}
+        </div>
+      )}
 
       {order.note && (
         <p className="mt-2 text-xs text-gray-500 border-t border-gray-100 pt-2 line-clamp-2">

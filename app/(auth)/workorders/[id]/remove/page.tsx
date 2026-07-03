@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation'
 import { AlertTriangle, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { useWorkOrder, useSubmitRemove } from '@/hooks/useWorkOrders'
 import { ApiError } from '@/lib/api'
+import { triggerScanFeedback } from '@/lib/scanFeedback'
 import { QrScanner } from '@/components/feature/QrScanner'
 import { CoverScanList, type ScannedCover } from '@/components/feature/CoverScanList'
+import { EvidencePhotoNotice } from '@/components/feature/EvidencePhotoNotice'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
@@ -26,6 +28,7 @@ export default function RemovePage({
   const [manualCode, setManualCode] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
+  const [scanFeedback, setScanFeedback] = useState<{ tone: 'success' | 'warning' | 'error'; message: string } | null>(null)
   const [isSubmittingRemove, setIsSubmittingRemove] = useState(false)
   const [feedback, setFeedback] = useState<{
     tone: 'success' | 'error'
@@ -44,10 +47,15 @@ export default function RemovePage({
     const trimmed = code.trim()
     if (!trimmed) return
     if (removedCovers.some((c) => c.code === trimmed)) {
-      setScanError(`รหัส ${trimmed} สแกนแล้ว`)
+      const message = `รหัส ${trimmed} สแกนแล้ว`
+      setScanError(message)
+      setScanFeedback({ tone: 'warning', message })
+      triggerScanFeedback({ tone: 'warning' })
       return
     }
     setScanError(null)
+    setScanFeedback({ tone: 'success', message: `เพิ่ม ${trimmed} แล้ว` })
+    triggerScanFeedback({ tone: 'success' })
     setRemovedCovers((prev) => [...prev, { code: trimmed, scannedAt: new Date() }])
   }
 
@@ -78,6 +86,8 @@ export default function RemovePage({
       })
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'เกิดข้อผิดพลาด กรุณาลองใหม่'
+      setScanFeedback({ tone: 'error', message })
+      triggerScanFeedback({ tone: 'error' })
       setFeedback({
         tone: 'error',
         title: 'ปิดงานไม่สำเร็จ',
@@ -103,6 +113,11 @@ export default function RemovePage({
   const removedQty = removedCovers.length
   const allRemoved = removedQty >= totalQty
   const progress = totalQty > 0 ? Math.min(1, removedQty / totalQty) : 0
+  const scanFeedbackClass = scanFeedback?.tone === 'success'
+    ? 'border-green-200 bg-green-50 text-green-800'
+    : scanFeedback?.tone === 'warning'
+      ? 'border-orange-200 bg-orange-50 text-orange-800'
+      : 'border-red-200 bg-red-50 text-red-800'
   const submitLocked = isSubmittingRemove || submitRemove.isPending || order.status !== 'REMOVING'
 
   return (
@@ -152,6 +167,11 @@ export default function RemovePage({
 
       {/* QR Scanner */}
       <QrScanner onScan={addCode} />
+      {scanFeedback && (
+        <div className={['rounded-2xl border px-4 py-3 text-sm font-medium shadow-sm', scanFeedbackClass].join(' ')} role="status">
+          {scanFeedback.message}
+        </div>
+      )}
 
       {/* Manual input */}
       <div className="flex gap-2">
@@ -184,6 +204,9 @@ export default function RemovePage({
         </h2>
         <CoverScanList covers={removedCovers} onRemove={(code) => setRemovedCovers((prev) => prev.filter((c) => c.code !== code))} readOnly={submitLocked} />
       </Card>
+
+      {/* Evidence photo notice */}
+      <EvidencePhotoNotice flow="remove" />
 
       {/* Close job button */}
       {!confirmOpen ? (

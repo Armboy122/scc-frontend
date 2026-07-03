@@ -8,6 +8,7 @@ import { useWorkOrders } from '@/hooks/useWorkOrders'
 import { WorkOrderCard } from '@/components/feature/WorkOrderCard'
 import { Button } from '@/components/ui/Button'
 import { getWorkOrderDisplayStatus, type WorkOrderDisplayStatus } from '@/lib/workOrderDisplayStatus'
+import type { WorkOrder } from '@/lib/types'
 
 const STATUS_FILTERS: { label: string; value: WorkOrderDisplayStatus | 'ALL' }[] = [
   { label: 'ทั้งหมด', value: 'ALL' },
@@ -18,6 +19,30 @@ const STATUS_FILTERS: { label: string; value: WorkOrderDisplayStatus | 'ALL' }[]
   { label: 'เกินกำหนด', value: 'OVERDUE' },
 ]
 
+const URGENT_STATUSES: WorkOrderDisplayStatus[] = ['OVERDUE', 'DUE_TODAY', 'PENDING_INSTALL']
+
+function statusPriority(order: WorkOrder): number {
+  const status = getWorkOrderDisplayStatus(order)
+  if (status === 'OVERDUE') return 0
+  if (status === 'DUE_TODAY') return 1
+  if (status === 'PENDING_INSTALL') return 2
+  if (status === 'DUE_SOON') return 3
+  if (status === 'INSTALLED') return 4
+  return 5
+}
+
+function timestamp(iso?: string): number {
+  if (!iso) return Number.MAX_SAFE_INTEGER
+  const value = new Date(iso).getTime()
+  return Number.isNaN(value) ? Number.MAX_SAFE_INTEGER : value
+}
+
+function sortFieldFirst(a: WorkOrder, b: WorkOrder): number {
+  return statusPriority(a) - statusPriority(b)
+    || timestamp(a.removalDate) - timestamp(b.removalDate)
+    || timestamp(a.installDate) - timestamp(b.installDate)
+}
+
 export default function WorkOrdersPage() {
   const { user } = useAuth()
   const router = useRouter()
@@ -25,12 +50,36 @@ export default function WorkOrdersPage() {
 
   const params = user?.role === 'tech' ? { assignedTo: user.id } : undefined
   const { data: allOrders = [], isLoading, error } = useWorkOrders(params)
+  const filterCounts = useMemo(() => {
+    const counts: Record<WorkOrderDisplayStatus | 'ALL', number> = {
+      ALL: allOrders.length,
+      PENDING_INSTALL: 0,
+      INSTALLED: 0,
+      DUE_SOON: 0,
+      DUE_TODAY: 0,
+      OVERDUE: 0,
+      COMPLETED: 0,
+    }
+    allOrders.forEach((order) => {
+      counts[getWorkOrderDisplayStatus(order)] += 1
+    })
+    return counts
+  }, [allOrders])
   const orders = useMemo(
     () =>
-      statusFilter === 'ALL'
+      (statusFilter === 'ALL'
         ? allOrders
-        : allOrders.filter((order) => getWorkOrderDisplayStatus(order) === statusFilter),
+        : allOrders.filter((order) => getWorkOrderDisplayStatus(order) === statusFilter)
+      ).toSorted(sortFieldFirst),
     [allOrders, statusFilter],
+  )
+  const urgentOrders = useMemo(
+    () => orders.filter((order) => URGENT_STATUSES.includes(getWorkOrderDisplayStatus(order))),
+    [orders],
+  )
+  const otherOrders = useMemo(
+    () => orders.filter((order) => !URGENT_STATUSES.includes(getWorkOrderDisplayStatus(order))),
+    [orders],
   )
 
   const canCreate = user?.role === 'exec' || user?.role === 'admin' || user?.role === 'tech'
@@ -72,13 +121,13 @@ export default function WorkOrdersPage() {
             aria-selected={statusFilter === f.value}
             onClick={() => setStatusFilter(f.value)}
             className={[
-              'flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
+              'flex-shrink-0 min-h-11 px-4 py-2.5 rounded-full text-sm font-medium transition-colors',
               statusFilter === f.value
                 ? 'bg-pea-600 text-white'
                 : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300',
             ].join(' ')}
           >
-            {f.label}
+            {f.label} ({filterCounts[f.value]})
           </button>
         ))}
       </div>
@@ -122,10 +171,40 @@ export default function WorkOrdersPage() {
       )}
 
       {!isLoading && !error && orders.length > 0 && (
-        <div className="space-y-3">
-          {orders.map((order) => (
-            <WorkOrderCard key={order.id} order={order} />
-          ))}
+        <div className="space-y-5">
+          {statusFilter === 'ALL' && urgentOrders.length > 0 && (
+            <section className="space-y-3" aria-labelledby="urgent-workorders-heading">
+              <div>
+                <h2 id="urgent-workorders-heading" className="text-base font-bold text-gray-900">
+                  ต้องทำวันนี้ / เร่งด่วน
+                </h2>
+                <p className="text-sm text-gray-600">เกินกำหนด → ครบกำหนด → รอติดตั้ง เรียงให้ทำต่อก่อน</p>
+              </div>
+              <div className="space-y-3">
+                {urgentOrders.map((order) => (
+                  <WorkOrderCard key={order.id} order={order} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {(statusFilter !== 'ALL' || otherOrders.length > 0) && (
+            <section className="space-y-3" aria-labelledby="other-workorders-heading">
+              {statusFilter === 'ALL' && (
+                <div>
+                  <h2 id="other-workorders-heading" className="text-base font-bold text-gray-900">
+                    งานอื่น ๆ
+                  </h2>
+                  <p className="text-sm text-gray-600">ใกล้ครบกำหนดและงานติดตั้งที่ยังไม่เร่งด่วน</p>
+                </div>
+              )}
+              <div className="space-y-3">
+                {(statusFilter === 'ALL' ? otherOrders : orders).map((order) => (
+                  <WorkOrderCard key={order.id} order={order} />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
 
