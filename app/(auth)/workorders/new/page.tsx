@@ -125,11 +125,11 @@ export default function NewWorkOrderPage() {
           )}
           <div>
             <p className={['text-sm font-medium', stockWarning ? 'text-orange-800' : 'text-green-800'].join(' ')}>
-              คงเหลือพร้อมสร้างใบงาน{installDate ? 'ตามวันติดตั้ง' : ''}: <strong>{availableForWorkOrder}</strong> ชิ้น
+              ฉนวนพร้อมติดตั้งหลังหักใบงานรอดำเนินการ: <strong>{availableForWorkOrder}</strong> ชิ้น
             </p>
             {stock.reservedPlanned > 0 && (
               <p className="text-xs text-gray-600 mt-0.5">
-                ในคลังจริง {stock.inStock} ชิ้น · กันไว้ในใบงานรอดำเนินการวันเดียวกัน {stock.reservedPlanned} ชิ้น
+                ในคลังจริง {stock.inStock} ชิ้น · กันไว้ในใบงานรอดำเนินการ {stock.reservedPlanned} ชิ้น
               </p>
             )}
             {stockWarning && (
@@ -226,7 +226,7 @@ export default function NewWorkOrderPage() {
           <Button
             type="submit"
             size="lg"
-            disabled={!user?.officeId}
+            disabled={!user?.officeId || stockWarning}
             loading={isSubmitting || createMutation.isPending}
             className="flex-1"
           >
