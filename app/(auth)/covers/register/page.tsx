@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -92,9 +93,12 @@ export default function RegisterCoverPage() {
 
       {createdCover && (
         <Card className="mb-4 text-center">
-          <img
+          <Image
             src={svgToDataUrl(createCoverLabelSvg(createdCover))}
             alt={`QR Code ${createdCover.assetCode}`}
+            width={224}
+            height={224}
+            unoptimized
             className="mx-auto w-56 h-auto"
           />
           <div className="mt-3 flex gap-2">

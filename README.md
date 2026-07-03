@@ -50,5 +50,32 @@ npm test
 For production, set this in Vercel Project Environment Variables:
 
 ```env
+NEXT_PUBLIC_API_BASE_URL=https://api.103.117.151.158.sslip.io/api/v1
+```
+
+When the permanent API domain is ready, replace the temporary `sslip.io` host with:
+
+```env
 NEXT_PUBLIC_API_BASE_URL=https://api.<domain>/api/v1
+```
+
+## Vercel deploy checklist
+
+Use these settings when importing `Armboy122/scc-frontend` into Vercel:
+
+| Setting | Value |
+|---|---|
+| Framework Preset | Next.js |
+| Root Directory | `.` |
+| Install Command | `npm ci` |
+| Build Command | `npm run build` |
+| Output Directory | `.next` |
+| Node.js | Vercel default / latest LTS |
+
+Before deploying, verify locally:
+
+```bash
+npm run lint
+npm test
+NEXT_PUBLIC_API_BASE_URL=https://api.103.117.151.158.sslip.io/api/v1 npm run build
 ```

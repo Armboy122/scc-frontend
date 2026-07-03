@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, ArrowLeft, AlertCircle, Download } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
@@ -157,9 +158,12 @@ export default function BatchRegisterPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {createdCovers.map((cover) => (
               <div key={cover.id} className="rounded-lg border border-gray-200 p-2 text-center">
-                <img
+                <Image
                   src={svgToDataUrl(createCoverLabelSvg(cover))}
                   alt={`QR Code ${cover.assetCode}`}
+                  width={240}
+                  height={240}
+                  unoptimized
                   className="w-full h-auto"
                 />
                 <button
