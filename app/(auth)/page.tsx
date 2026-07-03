@@ -36,7 +36,7 @@ export default function WorkOrdersPage() {
 
   const { data: orders = [], isLoading, error } = useWorkOrders(params)
 
-  const canCreate = user?.role === 'exec' || user?.role === 'admin'
+  const canCreate = user?.role === 'exec' || user?.role === 'admin' || user?.role === 'tech'
 
   return (
     <div className="page-padding max-w-6xl mx-auto">

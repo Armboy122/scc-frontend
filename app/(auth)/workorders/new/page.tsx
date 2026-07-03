@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -96,13 +96,6 @@ export default function NewWorkOrderPage() {
       console.error(err)
     }
   }
-
-  // Redirect non-authorised roles
-  useEffect(() => {
-    if (user && user.role === 'tech') {
-      router.replace('/')
-    }
-  }, [user, router])
 
   return (
     <div className="page-padding max-w-lg mx-auto">

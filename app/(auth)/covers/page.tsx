@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { CoverQrDownloadButton } from '@/components/feature/CoverQrDownloadButton'
 import type { CoverStatus } from '@/lib/types'
 
 const STATUS_OPTIONS: { label: string; value: CoverStatus | 'ALL' }[] = [
@@ -110,13 +111,16 @@ export default function CoversPage() {
           {/* Mobile cards */}
           <div className="md:hidden space-y-2">
             {filtered.map((cover) => (
-              <div key={cover.id} className="card-surface p-3 flex items-center gap-3">
+              <div key={cover.id} className="card-surface p-3 space-y-3">
+                <div className="flex items-center gap-3">
                 <Shield className="w-8 h-8 text-pea-300 flex-shrink-0" aria-hidden />
                 <div className="flex-1 min-w-0">
                   <p className="font-mono font-semibold text-sm text-gray-900">{cover.assetCode}</p>
                   <p className="text-xs text-gray-500 truncate">{cover.qrCode}</p>
                 </div>
                 <StatusBadge coverStatus={cover.status} size="sm" />
+                </div>
+                <CoverQrDownloadButton cover={cover} fullWidth />
               </div>
             ))}
           </div>
@@ -131,6 +135,7 @@ export default function CoversPage() {
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">NFC</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">สถานะ</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">สำนักงานเจ้าของ</th>
+                  <th className="text-right px-4 py-3 font-semibold text-gray-700">QR</th>
                 </tr>
               </thead>
               <tbody>
@@ -144,6 +149,9 @@ export default function CoversPage() {
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {cover.ownerOffice?.name ?? cover.ownerOfficeId}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <CoverQrDownloadButton cover={cover} />
                     </td>
                   </tr>
                 ))}

@@ -46,6 +46,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await api.post<RefreshResponse>('/auth/refresh', { refreshToken })
         if (!cancelled && res.data) {
           setAccessToken(res.data.accessToken)
+          if (res.data.refreshToken) {
+            setRefreshToken(res.data.refreshToken)
+          }
           setUser(res.data.user)
         }
       } catch {
