@@ -4,6 +4,7 @@ import { X, CheckCircle2 } from 'lucide-react'
 
 export interface ScannedCover {
   code: string
+  coverId?: string
   scannedAt: Date
 }
 

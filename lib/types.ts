@@ -188,11 +188,12 @@ export interface RegisterCoverRequest {
 
 export interface SubmitInstallRequest {
   coverCodes: string[]
-  photoUrl?: string
+  photoFile?: File
 }
 
 export interface SubmitRemoveRequest {
   coverCodes: string[]
+  photoFile?: File
 }
 
 export interface CreateBorrowRequest {

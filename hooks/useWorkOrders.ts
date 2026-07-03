@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { ApiError, api } from '@/lib/api'
+import { uploadEvidencePhoto } from '@/lib/evidenceUpload'
 import type {
+  Cover,
   CreateWorkOrderRequest,
   SubmitInstallRequest,
   SubmitRemoveRequest,
@@ -140,12 +142,22 @@ export function useSubmitInstall() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, payload }: { id: string; payload: SubmitInstallRequest }) => {
+      const scannedCovers: Cover[] = []
       for (const coverCode of payload.coverCodes) {
         try {
-          await api.post(`/workorders/${id}/scan-install`, { coverCode })
+          const res = await api.post<Cover>(`/workorders/${id}/scan-install`, { coverCode })
+          if (res.data) scannedCovers.push(res.data)
         } catch (err) {
           throw toCoverCodeError(err, coverCode)
         }
+      }
+      if (payload.photoFile) {
+        await uploadEvidencePhoto({
+          kind: 'install',
+          workOrderId: id,
+          coverIds: scannedCovers.map((cover) => cover.id),
+          file: payload.photoFile,
+        })
       }
       return api.post<WorkOrder>(`/workorders/${id}/submit-install`)
     },
@@ -169,12 +181,22 @@ export function useSubmitRemove() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, payload }: { id: string; payload: SubmitRemoveRequest }) => {
+      const removedCovers: Cover[] = []
       for (const coverCode of payload.coverCodes) {
         try {
-          await api.post(`/workorders/${id}/scan-remove`, { coverCode })
+          const res = await api.post<Cover>(`/workorders/${id}/scan-remove`, { coverCode })
+          if (res.data) removedCovers.push(res.data)
         } catch (err) {
           throw toCoverCodeError(err, coverCode)
         }
+      }
+      if (payload.photoFile) {
+        await uploadEvidencePhoto({
+          kind: 'remove',
+          workOrderId: id,
+          coverIds: removedCovers.map((cover) => cover.id),
+          file: payload.photoFile,
+        })
       }
       return api.post<WorkOrder>(`/workorders/${id}/complete-removal`)
     },

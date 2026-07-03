@@ -8,7 +8,7 @@ import { ApiError } from '@/lib/api'
 import { triggerScanFeedback } from '@/lib/scanFeedback'
 import { QrScanner } from '@/components/feature/QrScanner'
 import { CoverScanList, type ScannedCover } from '@/components/feature/CoverScanList'
-import { EvidencePhotoNotice } from '@/components/feature/EvidencePhotoNotice'
+import { PhotoCapture } from '@/components/feature/PhotoCapture'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
@@ -27,6 +27,7 @@ export default function RemovePage({
   const [removedCovers, setRemovedCovers] = useState<ScannedCover[]>([])
   const [manualCode, setManualCode] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [photo, setPhoto] = useState<File | null>(null)
   const [scanError, setScanError] = useState<string | null>(null)
   const [scanFeedback, setScanFeedback] = useState<{ tone: 'success' | 'warning' | 'error'; message: string } | null>(null)
   const [isSubmittingRemove, setIsSubmittingRemove] = useState(false)
@@ -66,6 +67,18 @@ export default function RemovePage({
 
   const handleSubmit = async () => {
     if (isSubmittingRemove || submitRemove.isPending) return
+    if (!photo) {
+      const message = 'กรุณาถ่ายรูปหลักฐานก่อนปิดงาน'
+      setScanFeedback({ tone: 'error', message })
+      triggerScanFeedback({ tone: 'error' })
+      setFeedback({
+        tone: 'error',
+        title: 'ยังไม่มีรูปหลักฐาน',
+        message,
+      })
+      setConfirmOpen(false)
+      return
+    }
 
     setIsSubmittingRemove(true)
     try {
@@ -73,6 +86,7 @@ export default function RemovePage({
         id,
         payload: {
           coverCodes: removedCovers.map((c) => c.code),
+          photoFile: photo,
         },
       })
       setFeedback({
@@ -205,8 +219,12 @@ export default function RemovePage({
         <CoverScanList covers={removedCovers} onRemove={(code) => setRemovedCovers((prev) => prev.filter((c) => c.code !== code))} readOnly={submitLocked} />
       </Card>
 
-      {/* Evidence photo notice */}
-      <EvidencePhotoNotice flow="remove" />
+      {/* Photo capture */}
+      <div>
+        <p className="mb-2 text-sm font-medium text-gray-700">รูปหลักฐานถอด <span className="text-red-500">*</span></p>
+        <PhotoCapture value={photo} onChange={setPhoto} disabled={submitLocked} />
+        <p className="mt-2 text-xs text-gray-500">รูปจะถูกอัปโหลดไป MinIO และผูกกับรายการฉนวนที่ถอดก่อนปิดงาน</p>
+      </div>
 
       {/* Close job button */}
       {!confirmOpen ? (
@@ -214,7 +232,7 @@ export default function RemovePage({
           <Button
             size="xl"
             fullWidth
-            disabled={!allRemoved || submitLocked}
+            disabled={!allRemoved || !photo || submitLocked}
             onClick={() => setConfirmOpen(true)}
             leftIcon={<CheckCircle2 className="w-5 h-5" />}
           >

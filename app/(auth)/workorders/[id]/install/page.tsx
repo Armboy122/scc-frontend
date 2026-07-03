@@ -8,7 +8,7 @@ import { ApiError } from '@/lib/api'
 import { triggerScanFeedback } from '@/lib/scanFeedback'
 import { QrScanner } from '@/components/feature/QrScanner'
 import { CoverScanList, type ScannedCover } from '@/components/feature/CoverScanList'
-import { EvidencePhotoNotice } from '@/components/feature/EvidencePhotoNotice'
+import { PhotoCapture } from '@/components/feature/PhotoCapture'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
@@ -27,6 +27,7 @@ export default function InstallPage({
   const [scannedCovers, setScannedCovers] = useState<ScannedCover[]>([])
   const [manualCode, setManualCode] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [photo, setPhoto] = useState<File | null>(null)
   const [scanError, setScanError] = useState<string | null>(null)
   const [scanFeedback, setScanFeedback] = useState<{ tone: 'success' | 'warning' | 'error'; message: string } | null>(null)
   const [isSubmittingInstall, setIsSubmittingInstall] = useState(false)
@@ -70,6 +71,18 @@ export default function InstallPage({
 
   const handleSubmit = async () => {
     if (isSubmittingInstall || submitInstall.isPending) return
+    if (!photo) {
+      const message = 'กรุณาถ่ายรูปหลักฐานก่อนยืนยันการติดตั้ง'
+      setScanFeedback({ tone: 'error', message })
+      triggerScanFeedback({ tone: 'error' })
+      setFeedback({
+        tone: 'error',
+        title: 'ยังไม่มีรูปหลักฐาน',
+        message,
+      })
+      setConfirmOpen(false)
+      return
+    }
 
     setIsSubmittingInstall(true)
     try {
@@ -77,6 +90,7 @@ export default function InstallPage({
         id,
         payload: {
           coverCodes: scannedCovers.map((c) => c.code),
+          photoFile: photo,
         },
       })
       setFeedback({
@@ -205,15 +219,19 @@ export default function InstallPage({
         <CoverScanList covers={scannedCovers} onRemove={removeCode} readOnly={submitLocked} />
       </Card>
 
-      {/* Evidence photo notice */}
-      <EvidencePhotoNotice flow="install" />
+      {/* Photo capture */}
+      <div>
+        <p className="mb-2 text-sm font-medium text-gray-700">รูปหลักฐานติดตั้ง <span className="text-red-500">*</span></p>
+        <PhotoCapture value={photo} onChange={setPhoto} disabled={submitLocked} />
+        <p className="mt-2 text-xs text-gray-500">รูปจะถูกอัปโหลดไป MinIO และผูกกับรายการฉนวนที่สแกนก่อนยืนยันงาน</p>
+      </div>
 
       {/* Submit */}
       {!confirmOpen ? (
         <Button
           size="xl"
           fullWidth
-          disabled={scannedQty === 0 || submitLocked}
+          disabled={scannedQty === 0 || !photo || submitLocked}
           onClick={() => setConfirmOpen(true)}
           leftIcon={<CheckCircle2 className="w-5 h-5" />}
         >
