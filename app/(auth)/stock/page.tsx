@@ -4,6 +4,11 @@ import { Package } from 'lucide-react'
 import { useStock } from '@/hooks/useStock'
 import { Card } from '@/components/ui/Card'
 import { StockBadge } from '@/components/ui/StockBadge'
+import type { StockSummary } from '@/lib/types'
+
+function officeDisplayName(stock: StockSummary) {
+  return stock.office?.name ?? 'ไม่พบชื่อสำนักงาน'
+}
 
 export default function StockPage() {
   const { data: stockList = [], isLoading, error } = useStock()
@@ -45,7 +50,7 @@ export default function StockPage() {
               <Card key={stock.officeId}>
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="font-semibold text-gray-900">
-                    {stock.office?.name ?? stock.officeId}
+                    {officeDisplayName(stock)}
                   </h2>
                   <StockBadge count={stock.total} label="ทั้งหมด" />
                 </div>
@@ -91,7 +96,7 @@ export default function StockPage() {
                     className={['border-b border-gray-100 hover:bg-gray-50', i % 2 === 0 ? '' : ''].join(' ')}
                   >
                     <td className="px-4 py-3 font-medium text-gray-900">
-                      {stock.office?.name ?? stock.officeId}
+                      {officeDisplayName(stock)}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <span className="font-bold text-green-700 tabular-nums">{stock.inStock}</span>

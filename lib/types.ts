@@ -31,7 +31,7 @@ export type BorrowDirection = 'in' | 'out'
 export interface Office {
   id: string
   name: string
-  workhubId: string
+  workHubId: string
 }
 
 export interface User {
