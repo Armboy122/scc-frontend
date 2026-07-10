@@ -13,10 +13,8 @@ export const SECURITY_HEADERS = [
 ] as const
 
 const nextConfig: NextConfig = {
-  // next-pwa is included as a dependency (optional PWA support).
-  // To enable PWA, install @ducanh2912/next-pwa and wrap this config:
-  //   import withPWA from '@ducanh2912/next-pwa'
-  //   export default withPWA({ dest: 'public' })(nextConfig)
+  // The repository-owned static service worker in public/sw.js deliberately
+  // avoids a build-time Workbox/next-pwa dependency.
   images: {
     remotePatterns: [
       {
