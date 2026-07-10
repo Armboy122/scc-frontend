@@ -29,6 +29,15 @@ describe('getWorkOrderDisplayStatus', () => {
     expect(getWorkOrderDisplayStatus(makeWorkOrder({ removalDate: '2026-07-03T00:00:00+07:00' }), now)).toBe('OVERDUE')
   })
 
+  it('uses the Thailand business date independently of the runtime timezone', () => {
+    const justBeforeBangkokMidnight = new Date('2026-07-03T16:59:59Z')
+    const atBangkokMidnight = new Date('2026-07-03T17:00:00Z')
+    const order = makeWorkOrder({ removalDate: '2026-07-04T00:00:00+07:00' })
+
+    expect(getWorkOrderDisplayStatus(order, justBeforeBangkokMidnight)).toBe('DUE_SOON')
+    expect(getWorkOrderDisplayStatus(order, atBangkokMidnight)).toBe('DUE_TODAY')
+  })
+
   it('maps removal and cancellation states explicitly', () => {
     expect(getWorkOrderDisplayStatus(makeWorkOrder({ status: 'REMOVING' }), now)).toBe('REMOVING')
     expect(getWorkOrderDisplayStatusConfig(makeWorkOrder({ status: 'REMOVING' }), now).label).toBe('กำลังถอด')

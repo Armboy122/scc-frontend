@@ -18,6 +18,13 @@ export interface WorkOrderDisplayStatusConfig {
 
 const DAY_MS = 86_400_000
 const DUE_SOON_DAYS = 7
+const BUSINESS_TIME_ZONE = 'Asia/Bangkok'
+const BUSINESS_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  timeZone: BUSINESS_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
 
 export const WORK_ORDER_DISPLAY_STATUS_CONFIG: Record<WorkOrderDisplayStatus, WorkOrderDisplayStatusConfig> = {
   PENDING_INSTALL: {
@@ -62,15 +69,22 @@ export const WORK_ORDER_DISPLAY_STATUS_CONFIG: Record<WorkOrderDisplayStatus, Wo
   },
 }
 
-function startOfDay(value: Date): number {
-  return new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime()
+function businessDay(value: Date): number {
+  const parts = BUSINESS_DATE_FORMATTER.formatToParts(value)
+  const year = Number(parts.find((part) => part.type === 'year')?.value)
+  const month = Number(parts.find((part) => part.type === 'month')?.value)
+  const day = Number(parts.find((part) => part.type === 'day')?.value)
+
+  if (![year, month, day].every(Number.isInteger)) return Number.NaN
+  return Date.UTC(year, month - 1, day)
 }
 
 function parseDateOnly(iso?: string): number | null {
   if (!iso) return null
   const value = new Date(iso)
   if (Number.isNaN(value.getTime())) return null
-  return startOfDay(value)
+  const day = businessDay(value)
+  return Number.isNaN(day) ? null : day
 }
 
 export function getWorkOrderDisplayStatus(order: WorkOrder, now: Date = new Date()): WorkOrderDisplayStatus {
@@ -95,7 +109,7 @@ export function getWorkOrderDisplayStatus(order: WorkOrder, now: Date = new Date
     return order.status === 'REMOVAL_DUE' ? 'DUE_TODAY' : 'INSTALLED'
   }
 
-  const today = startOfDay(now)
+  const today = businessDay(now)
   const daysLeft = Math.round((removalDay - today) / DAY_MS)
 
   if (daysLeft < 0) return 'OVERDUE'
