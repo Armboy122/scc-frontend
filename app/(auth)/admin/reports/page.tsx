@@ -1,119 +1,24 @@
 'use client'
 
-import { BarChart3, Lock } from 'lucide-react'
+import { useState } from 'react'
+import { Download, FileBarChart, Lock } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
-import { useStock } from '@/hooks/useStock'
-import { useWorkOrders } from '@/hooks/useWorkOrders'
+import { api } from '@/lib/api'
+import { useReportSummary } from '@/hooks/useAdmin'
+import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { Input } from '@/components/ui/Input'
-import { StatusBadge } from '@/components/ui/StatusBadge'
-import type { WorkOrderStatus } from '@/lib/types'
-
-const REPORT_STATUSES: WorkOrderStatus[] = [
-  'SCHEDULED',
-  'ACTIVE',
-  'REMOVAL_DUE',
-  'REMOVING',
-  'COMPLETED',
-  'CANCELLED',
-]
+import { Select } from '@/components/ui/Select'
+import { useOffices } from '@/hooks/useOffices'
 
 export default function ReportsPage() {
   const { user } = useAuth()
-  const { data: stock = [] } = useStock()
-  const { data: orders = [] } = useWorkOrders()
-
-  if (user?.role !== 'admin') {
-    return (
-      <div className="page-padding max-w-lg mx-auto text-center py-16">
-        <Lock className="w-12 h-12 mx-auto mb-3 text-gray-300" aria-hidden />
-        <p className="font-medium text-gray-900">สำหรับผู้ดูแลระบบเท่านั้น</p>
-      </div>
-    )
-  }
-
-  const total = stock.reduce((sum, row) => sum + row.total, 0)
-  const installed = stock.reduce((sum, row) => sum + row.installed, 0)
-  const utilization = total > 0 ? Math.round((installed / total) * 100) : 0
-  const activeOrders = orders.filter((order) => order.status === 'ACTIVE' || order.status === 'REMOVAL_DUE').length
-  const cancelledOrders = orders.filter((order) => order.status === 'CANCELLED').length
-  const statusCounts = REPORT_STATUSES.map((status) => ({
-    status,
-    count: orders.filter((order) => order.status === status).length,
-  }))
-
-  return (
-    <div className="page-padding max-w-6xl mx-auto">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">รายงาน / วิเคราะห์</h1>
-          <p className="text-sm text-gray-500 mt-0.5">ภาพรวมการใช้งานฉนวนและประสิทธิภาพรายสำนักงาน</p>
-        </div>
-        <div className="grid grid-cols-2 gap-2 md:w-80">
-          <Input type="date" aria-label="วันที่เริ่มต้น" />
-          <Input type="date" aria-label="วันที่สิ้นสุด" />
-        </div>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-4 mb-5">
-        <Card>
-          <p className="text-xs text-gray-500">อัตราใช้งาน</p>
-          <p className="font-mono text-3xl font-bold text-pea-700 mt-2">{utilization}%</p>
-        </Card>
-        <Card>
-          <p className="text-xs text-gray-500">ใบงาน active</p>
-          <p className="font-mono text-3xl font-bold text-gray-900 mt-2">{activeOrders}</p>
-        </Card>
-        <Card>
-          <p className="text-xs text-gray-500">ฉนวนรวม</p>
-          <p className="font-mono text-3xl font-bold text-gray-900 mt-2">{total}</p>
-        </Card>
-        <Card>
-          <p className="text-xs text-gray-500">ใบงานยกเลิก</p>
-          <p className="font-mono text-3xl font-bold text-gray-700 mt-2">{cancelledOrders}</p>
-        </Card>
-      </div>
-
-      <Card className="mb-5">
-        <div className="flex items-center gap-2 mb-5">
-          <BarChart3 className="w-5 h-5 text-pea-600" aria-hidden />
-          <h2 className="font-semibold text-gray-900">จำนวนใบงานตามสถานะ</h2>
-        </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {statusCounts.map(({ status, count }) => (
-            <div key={status} className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
-              <StatusBadge status={status} size="sm" />
-              <span className="font-mono text-lg font-bold text-gray-900">{count}</span>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      <Card>
-        <div className="flex items-center gap-2 mb-5">
-          <BarChart3 className="w-5 h-5 text-pea-600" aria-hidden />
-          <h2 className="font-semibold text-gray-900">อัตราใช้งานตามสำนักงาน</h2>
-        </div>
-        <div className="space-y-4">
-          {stock.map((row) => {
-            const percent = row.total > 0 ? Math.round((row.installed / row.total) * 100) : 0
-            return (
-              <div key={row.officeId}>
-                <div className="flex items-center justify-between gap-3 text-sm mb-1">
-                  <span className="font-medium text-gray-800 truncate">{row.office?.name ?? row.officeId}</span>
-                  <span className="font-mono font-bold text-gray-900">{percent}%</span>
-                </div>
-                <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                  <div className="h-full rounded-full bg-pea-600" style={{ width: `${percent}%` }} />
-                </div>
-              </div>
-            )
-          })}
-          {stock.length === 0 && (
-            <p className="text-sm text-gray-500 text-center py-8">ยังไม่มีข้อมูลสำหรับรายงาน</p>
-          )}
-        </div>
-      </Card>
-    </div>
-  )
+  const [officeId, setOfficeId] = useState('')
+  const { data: offices = [] } = useOffices(user?.role === 'admin')
+  const { data, isLoading, isError, refetch } = useReportSummary(officeId || undefined, user?.role === 'admin')
+  if (user?.role !== 'admin') return <Forbidden />
+  async function downloadCsv() { const blob = await api.download(`/reports/export.csv${officeId ? `?officeId=${encodeURIComponent(officeId)}` : ''}`); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'smart-cover-report.csv'; anchor.click(); URL.revokeObjectURL(url) }
+  return <div className="page-padding mx-auto w-full max-w-none"><header className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between"><div><h1 className="text-xl font-bold">รายงาน</h1><p className="mt-1 text-sm text-gray-600">ภาพรวมข้อมูลฉนวนและใบงานจากระบบปัจจุบัน</p></div><Button leftIcon={<Download className="h-4 w-4" />} onClick={() => void downloadCsv()}>ดาวน์โหลด CSV</Button></header><Card className="mb-5"><div className="max-w-sm"><Select label="สำนักงาน" placeholder="ทุกสำนักงาน" options={offices.map((office) => ({ value: office.id, label: office.name }))} value={officeId} onChange={(event) => setOfficeId(event.target.value)} /></div></Card>
+    {isLoading ? <Card><p className="text-sm text-gray-600">กำลังโหลดรายงาน…</p></Card> : isError ? <Card><p className="text-sm text-red-700">โหลดรายงานไม่สำเร็จ</p><Button className="mt-3" variant="outline" onClick={() => void refetch()}>ลองใหม่</Button></Card> : !data ? <Card><p className="text-sm text-gray-600">ยังไม่มีข้อมูลรายงาน</p></Card> : <><div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Kpi label="ฉนวนทั้งหมด" value={data.totalCovers} /><Kpi label="ติดตั้งอยู่" value={data.installedCovers} /><Kpi label="อัตราการใช้งาน" value={`${data.utilization}%`} primary /><Kpi label="ใบงานที่ดำเนินการ" value={data.activeWorkOrders} /></div><Card className="mb-5"><h2 className="font-semibold">ฉนวนที่ติดตั้งอยู่ตามประเภทการใช้งาน</h2><div className="mt-4 grid gap-3 sm:grid-cols-2"><Kpi label="งานครอบให้ผู้ใช้ไฟฟ้า" value={data.usageByType?.CUSTOMER_COVER ?? 0} /><Kpi label="ใช้งานภายใน" value={data.usageByType?.INTERNAL ?? 0} /></div></Card><Card className="overflow-x-auto p-0"><div className="flex items-center gap-2 p-4"><FileBarChart className="h-5 w-5 text-pea-600" /><h2 className="font-semibold">รายสำนักงาน</h2></div><table className="min-w-[720px] w-full text-sm"><thead className="border-t bg-gray-50 text-left text-gray-700"><tr><th className="px-4 py-3 font-semibold">สำนักงาน</th><th className="px-4 py-3 text-right font-semibold">ฉนวนทั้งหมด</th><th className="px-4 py-3 text-right font-semibold">ติดตั้งอยู่</th><th className="px-4 py-3 text-right font-semibold">การใช้งาน</th></tr></thead><tbody>{data.byOffice.map((row) => <tr key={row.office.id} className="border-t border-gray-100 hover:bg-gray-50"><td className="px-4 py-3 font-medium">{row.office.name}</td><td className="px-4 py-3 text-right tabular-nums">{row.total}</td><td className="px-4 py-3 text-right tabular-nums">{row.installed}</td><td className="px-4 py-3 text-right font-medium tabular-nums">{row.utilization}%</td></tr>)}</tbody></table></Card></>}</div>
 }
+function Kpi({ label, value, primary }: { label: string; value: string | number; primary?: boolean }) { return <Card><p className="text-sm text-gray-600">{label}</p><p className={`mt-2 text-3xl font-bold tabular-nums ${primary ? 'text-pea-700' : 'text-gray-900'}`}>{value}</p></Card> }
+function Forbidden() { return <div className="page-padding mx-auto max-w-lg py-16 text-center"><Lock className="mx-auto mb-3 h-12 w-12 text-gray-400" /><p className="font-medium">สำหรับผู้ดูแลระบบเท่านั้น</p></div> }

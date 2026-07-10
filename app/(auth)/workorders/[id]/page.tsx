@@ -215,6 +215,11 @@ export default function WorkOrderDetailPage({
             value={`${formatDate(order.installDate)}`}
           />
           <InfoRow
+            icon={Package}
+            label="ประเภทการใช้งาน"
+            value={order.usageType === 'INTERNAL' ? 'ใช้งานภายใน' : 'งานครอบให้ผู้ใช้ไฟฟ้า'}
+          />
+          <InfoRow
             icon={Calendar}
             label="วันถอด"
             value={

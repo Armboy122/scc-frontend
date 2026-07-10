@@ -8,7 +8,9 @@ import { useAuth } from '@/lib/auth'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { CoverQrDownloadButton } from '@/components/feature/CoverQrDownloadButton'
+import { useOffices } from '@/hooks/useOffices'
 import type { CoverStatus } from '@/lib/types'
 
 const STATUS_OPTIONS: { label: string; value: CoverStatus | 'ALL' }[] = [
@@ -23,10 +25,13 @@ export default function CoversPage() {
   const router = useRouter()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<CoverStatus | 'ALL'>('ALL')
+  const [officeId, setOfficeId] = useState('')
+  const { data: offices = [] } = useOffices(user?.role === 'admin')
 
   const { data: covers = [], isLoading, error } = useCovers({
     status: statusFilter !== 'ALL' ? statusFilter : undefined,
     q: search.trim() || undefined,
+    officeId: user?.role === 'admin' ? officeId || undefined : undefined,
   })
 
   const canRegister = user?.role === 'admin' || Boolean(user?.officeId)
@@ -77,6 +82,7 @@ export default function CoversPage() {
             </button>
           ))}
         </div>
+        {user?.role === 'admin' && <div className="sm:w-56"><Select aria-label="กรองสำนักงาน" placeholder="ทุกสำนักงาน" options={offices.map((office) => ({ value: office.id, label: office.name }))} value={officeId} onChange={(event) => setOfficeId(event.target.value)} /></div>}
       </div>
 
       {isLoading && (

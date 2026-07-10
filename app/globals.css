@@ -74,6 +74,7 @@ body {
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  font-family: var(--font-thai), var(--font-inter), system-ui, sans-serif;
 }
 
 /* ─── Focus ring ────────────────────────────────────────────────────────────── */

@@ -86,6 +86,7 @@ export function WorkOrderCard({ order }: WorkOrderCardProps) {
           {order.office && (
             <p className="text-xs text-gray-500 mt-0.5">{order.office.name}</p>
           )}
+          <p className="mt-1 text-xs text-gray-600">{order.usageType === 'INTERNAL' ? 'ใช้งานภายใน' : 'งานครอบให้ผู้ใช้ไฟฟ้า'}</p>
         </div>
         <StatusBadge workOrder={order} size="sm" />
       </div>

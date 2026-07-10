@@ -12,6 +12,8 @@ export type WorkOrderStatus =
   | 'COMPLETED'
   | 'CANCELLED'
 
+export type UsageType = 'CUSTOMER_COVER' | 'INTERNAL'
+
 export type NotificationType =
   | 'REMOVAL_DUE'
   | 'BORROW_REQUESTED'
@@ -53,6 +55,55 @@ export interface Office {
   id: string
   name: string
   workHubId: string
+}
+
+export interface WorkHub {
+  id: string
+  name: string
+}
+
+export interface AdminUser extends User {
+  isActive: boolean
+}
+
+export interface CreateUserRequest {
+  name: string
+  username: string
+  password: string
+  role: Role
+  officeId?: string
+}
+
+export interface UpdateUserRequest {
+  name?: string
+  role?: Role
+  officeId?: string | null
+  isActive?: boolean
+}
+
+export interface ReportSummary {
+  totalCovers: number
+  installedCovers: number
+  utilization: number
+  activeWorkOrders: number
+  byOffice: Array<{ office: Office; total: number; installed: number; inStock: number; utilization: number }>
+  usageByType: Record<UsageType, number>
+}
+
+export interface RFIDScanResult {
+  officeId: string
+  expected: number
+  scanned: number
+  matched: number
+  missing: string[]
+  unknown: string[]
+  createdAt: string
+}
+
+export interface UsageMode {
+  code: string
+  name?: string
+  description?: string
 }
 
 export interface User {
@@ -101,6 +152,8 @@ export interface Installation {
 export interface WorkOrder {
   id: string
   status: WorkOrderStatus
+
+  usageType?: UsageType
   customerName: string
   customerPhone?: string
   installDate?: string
@@ -266,6 +319,7 @@ export interface CreateWorkOrderRequest {
   gpsLat?: number
   gpsLng?: number
   note?: string
+  usageType?: UsageType
 }
 
 export interface RegisterCoverRequest {
@@ -318,6 +372,7 @@ export interface WorkOrderQueryParams extends PaginationParams {
   status?: WorkOrderStatus
   mine?: boolean
   officeId?: string
+  usageType?: UsageType
 }
 
 export interface CoverQueryParams extends PaginationParams {

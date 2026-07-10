@@ -7,8 +7,9 @@ import { useAuth } from '@/lib/auth'
 import { useWorkOrders } from '@/hooks/useWorkOrders'
 import { WorkOrderCard } from '@/components/feature/WorkOrderCard'
 import { Button } from '@/components/ui/Button'
+import { Select } from '@/components/ui/Select'
 import { getWorkOrderDisplayStatus, type WorkOrderDisplayStatus } from '@/lib/workOrderDisplayStatus'
-import type { WorkOrder } from '@/lib/types'
+import type { UsageType, WorkOrder } from '@/lib/types'
 
 const STATUS_FILTERS: { label: string; value: WorkOrderDisplayStatus | 'ALL' }[] = [
   { label: 'ทั้งหมด', value: 'ALL' },
@@ -52,8 +53,9 @@ export default function WorkOrdersPage() {
   const { user } = useAuth()
   const router = useRouter()
   const [statusFilter, setStatusFilter] = useState<WorkOrderDisplayStatus | 'ALL'>('ALL')
+  const [usageType, setUsageType] = useState<'ALL' | UsageType>('ALL')
 
-  const params = user?.role === 'tech' ? { mine: true } : undefined
+  const params = { ...(user?.role === 'tech' ? { mine: true } : {}), ...(usageType === 'ALL' ? {} : { usageType }) }
   const { data: allOrders = [], isLoading, error } = useWorkOrders(params)
   const filterCounts = useMemo(() => {
     const counts: Record<WorkOrderDisplayStatus | 'ALL', number> = {
@@ -113,6 +115,10 @@ export default function WorkOrdersPage() {
             สร้างใบงาน
           </Button>
         )}
+      </div>
+
+      <div className="mb-5 max-w-xs">
+        <Select label="ประเภทการใช้งาน" options={[{ value: 'ALL', label: 'ทุกประเภท' }, { value: 'CUSTOMER_COVER', label: 'งานครอบให้ผู้ใช้ไฟฟ้า' }, { value: 'INTERNAL', label: 'ใช้งานภายใน' }]} value={usageType} onChange={(event) => setUsageType(event.target.value as 'ALL' | UsageType)} />
       </div>
 
       {/* Status filter tabs */}

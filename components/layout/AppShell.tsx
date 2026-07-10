@@ -16,6 +16,8 @@ import {
   Shield,
   TriangleAlert,
   User,
+  Users,
+  Building2,
 } from 'lucide-react'
 import { useUnreadNotificationCount } from '@/hooks/useNotifications'
 import { useAuth, AuthGuard } from '@/lib/auth'
@@ -33,20 +35,25 @@ export interface NavItem {
   icon: React.ElementType
   roles?: Role[]
   feature?: keyof PhaseFeatureFlags
+  section?: 'operations' | 'admin' | 'account'
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/',              label: 'ใบงาน',    icon: ClipboardList },
-  { href: '/dashboard',    label: 'แดชบอร์ด',  icon: BarChart3,  roles: ['admin', 'exec'] },
-  { href: '/stock',        label: 'สต็อก',     icon: Package },
-  { href: '/covers',       label: 'ฉนวน',      icon: Shield },
-  { href: '/borrows',      label: 'ใบยืม',     icon: Handshake,  roles: ['admin', 'exec', 'tech'], feature: 'phase2Borrowing' },
-  { href: '/discrepancies', label: 'ข้อคลาดเคลื่อน', icon: TriangleAlert, roles: ['admin', 'exec', 'tech'], feature: 'phase2Borrowing' },
-  { href: '/admin/usage-modes', label: 'โหมดใช้งาน', icon: BriefcaseBusiness, roles: ['admin'], feature: 'phase3Expansion' },
-  { href: '/admin/rfid',   label: 'RFID',       icon: Radio,      roles: ['admin'], feature: 'phase3Expansion' },
-  { href: '/admin/reports', label: 'รายงาน',    icon: FileBarChart, roles: ['admin'], feature: 'phase3Expansion' },
-  { href: '/notifications', label: 'แจ้งเตือน', icon: Bell },
-  { href: '/profile',      label: 'โปรไฟล์',   icon: User },
+  { href: '/', label: 'ใบงาน', icon: ClipboardList, section: 'operations' },
+  { href: '/dashboard', label: 'แดชบอร์ด', icon: BarChart3, roles: ['admin', 'exec'], section: 'operations' },
+  { href: '/stock', label: 'สต็อก', icon: Package, section: 'operations' },
+  { href: '/covers', label: 'ฉนวน', icon: Shield, section: 'operations' },
+  { href: '/borrows', label: 'ใบยืม', icon: Handshake, roles: ['admin', 'exec', 'tech'], feature: 'phase2Borrowing', section: 'operations' },
+  { href: '/discrepancies', label: 'ข้อคลาดเคลื่อน', icon: TriangleAlert, roles: ['admin', 'exec', 'tech'], feature: 'phase2Borrowing', section: 'operations' },
+  { href: '/admin', label: 'เพิ่มเติม', icon: BriefcaseBusiness, roles: ['admin'], section: 'admin' },
+  { href: '/admin/users', label: 'ผู้ใช้งาน', icon: Users, roles: ['admin'], section: 'admin' },
+  { href: '/admin/offices', label: 'สำนักงาน', icon: Building2, roles: ['admin'], section: 'admin' },
+  { href: '/admin/workhubs', label: 'WorkHub', icon: Building2, roles: ['admin'], section: 'admin' },
+  { href: '/admin/usage-modes', label: 'โหมดใช้งาน', icon: BriefcaseBusiness, roles: ['admin'], feature: 'phase3Expansion', section: 'admin' },
+  { href: '/admin/rfid', label: 'ตรวจนับ RFID', icon: Radio, roles: ['admin'], feature: 'phase3Expansion', section: 'admin' },
+  { href: '/admin/reports', label: 'รายงาน', icon: FileBarChart, roles: ['admin'], feature: 'phase3Expansion', section: 'admin' },
+  { href: '/notifications', label: 'แจ้งเตือน', icon: Bell, section: 'account' },
+  { href: '/profile', label: 'โปรไฟล์', icon: User, section: 'account' },
 ]
 
 // ─── Role badge ───────────────────────────────────────────────────────────────
@@ -155,7 +162,7 @@ function BottomNavItem({
 }
 
 export function getMobileNavItems(items: NavItem[]): NavItem[] {
-  return [...items]
+  return items.filter((item) => ['/', '/dashboard', '/stock', '/covers', '/admin', '/notifications', '/profile'].includes(item.href))
 }
 
 export function getVisibleNavItems(
@@ -247,14 +254,14 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {visibleItems.map((item) => (
-            <SidebarNavItem
-              key={item.href}
-              item={item}
-              pathname={pathname}
-              badgeCount={item.href === '/notifications' ? unreadNotificationCount : 0}
-            />
-          ))}
+          {(['operations', 'admin', 'account'] as const).map((section) => {
+            const items = visibleItems.filter((item) => item.section === section)
+            if (!items.length) return null
+            return <div key={section} className="space-y-1 pb-3">
+              {section !== 'operations' && <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-white/45">{section === 'admin' ? 'ผู้ดูแลระบบ' : 'บัญชี'}</p>}
+              {items.map((item) => <SidebarNavItem key={item.href} item={item} pathname={pathname} badgeCount={item.href === '/notifications' ? unreadNotificationCount : 0} />)}
+            </div>
+          })}
         </nav>
 
         {/* User section */}

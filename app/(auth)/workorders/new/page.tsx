@@ -12,6 +12,7 @@ import { useCreateWorkOrder } from '@/hooks/useWorkOrders'
 import { useOfficeStock } from '@/hooks/useStock'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
+import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { GpsPicker, type GpsCoords } from '@/components/feature/GpsPicker'
 import { ApiError } from '@/lib/api'
@@ -27,6 +28,7 @@ const schema = z
     removalDate: z.string().min(1, 'กรุณาเลือกวันถอด'),
     plannedQty: z.coerce.number().int().min(1, 'จำนวนต้องมากกว่า 0'),
     note: z.string().optional(),
+    usageType: z.enum(['CUSTOMER_COVER', 'INTERNAL']),
   })
   .refine((v) => new Date(v.removalDate) > new Date(v.installDate), {
     message: 'วันถอดต้องหลังวันติดตั้ง',
@@ -55,7 +57,7 @@ export default function NewWorkOrderPage() {
     formState: { errors, isSubmitting },
   } = useForm<NewWorkOrderForm>({
     resolver: zodResolver(schema),
-    defaultValues: { plannedQty: 1 },
+    defaultValues: { plannedQty: 1, usageType: 'CUSTOMER_COVER' },
   })
 
   const installDate = watch('installDate')
@@ -94,6 +96,7 @@ export default function NewWorkOrderPage() {
         removalDate: toApiDate(data.removalDate),
         plannedQty: data.plannedQty,
         note: data.note,
+        usageType: data.usageType,
         ...(gpsCoords ? { gpsLat: gpsCoords.latitude, gpsLng: gpsCoords.longitude } : {}),
       })
       if (res.data) {
@@ -166,6 +169,8 @@ export default function NewWorkOrderPage() {
           error={errors.customerName?.message}
           {...register('customerName')}
         />
+
+        <Select label="ประเภทการใช้งาน" options={[{ value: 'CUSTOMER_COVER', label: 'งานครอบให้ผู้ใช้ไฟฟ้า' }, { value: 'INTERNAL', label: 'ใช้งานภายใน' }]} {...register('usageType')} />
 
         <Input
           label="เบอร์โทรลูกค้า"

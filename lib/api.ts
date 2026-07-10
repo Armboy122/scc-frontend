@@ -209,4 +209,13 @@ export const api = {
   delete<T>(path: string): Promise<ApiResponse<T>> {
     return request<T>(path, { method: 'DELETE' })
   },
+
+  async download(path: string): Promise<Blob> {
+    const token = getAccessToken()
+    const response = await fetch(`${BASE_URL()}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!response.ok) throw new ApiError('ไม่สามารถดาวน์โหลดไฟล์ได้', 'DOWNLOAD_FAILED', response.status)
+    return response.blob()
+  },
 }

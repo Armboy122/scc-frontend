@@ -54,6 +54,7 @@ function normaliseWorkOrder(order: BackendWorkOrder): WorkOrder {
 
   return {
     ...order,
+    usageType: order.usageType ?? 'CUSTOMER_COVER',
     installDate: order.installDate ?? undefined,
     removalDate: order.removalDate ?? undefined,
     plannedQty,
