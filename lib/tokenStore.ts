@@ -7,6 +7,7 @@
 const REFRESH_TOKEN_KEY = 'scc_refresh'
 
 let _accessToken: string | null = null
+let _sessionVersion = 0
 
 export function getAccessToken(): string | null {
   return _accessToken
@@ -14,6 +15,10 @@ export function getAccessToken(): string | null {
 
 export function setAccessToken(token: string | null): void {
   _accessToken = token
+}
+
+export function getSessionVersion(): number {
+  return _sessionVersion
 }
 
 export function getRefreshToken(): string | null {
@@ -30,7 +35,21 @@ export function setRefreshToken(token: string | null): void {
   }
 }
 
+/** Publish tokens for a new explicit auth identity/session boundary. */
+export function replaceSessionTokens(accessToken: string, refreshToken: string): void {
+  _sessionVersion += 1
+  setRefreshToken(refreshToken)
+  setAccessToken(accessToken)
+}
+
+/** Rotate credentials within the current identity without changing ownership. */
+export function rotateSessionTokens(accessToken: string, refreshToken: string): void {
+  setRefreshToken(refreshToken)
+  setAccessToken(accessToken)
+}
+
 export function clearAllTokens(): void {
+  _sessionVersion += 1
   _accessToken = null
   if (typeof window !== 'undefined') {
     localStorage.removeItem(REFRESH_TOKEN_KEY)

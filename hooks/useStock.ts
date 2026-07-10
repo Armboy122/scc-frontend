@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { OPERATIONAL_QUERY_FRESHNESS } from '@/lib/queryPolicy'
 import type { StockSummary } from '@/lib/types'
 
 const KEYS = {
@@ -9,6 +10,7 @@ const KEYS = {
 
 export function useStock(officeId?: string, installDate?: string) {
   return useQuery({
+    ...OPERATIONAL_QUERY_FRESHNESS,
     queryKey: KEYS.summary(officeId, installDate),
     queryFn: async () => {
       const params = { officeId, installDate }
@@ -20,6 +22,7 @@ export function useStock(officeId?: string, installDate?: string) {
 
 export function useOfficeStock(officeId: string, installDate?: string) {
   return useQuery({
+    ...OPERATIONAL_QUERY_FRESHNESS,
     queryKey: KEYS.summary(officeId, installDate),
     queryFn: async () => {
       const res = await api.get<StockSummary>(`/stock/${officeId}`, { installDate })

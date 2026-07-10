@@ -3,7 +3,13 @@
 import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, ArrowLeft, CheckCircle2 } from 'lucide-react'
-import { useWorkOrder, useSubmitInstall } from '@/hooks/useWorkOrders'
+import {
+  useInstallDraft,
+  useScanInstallDraft,
+  useSubmitInstall,
+  useUnscanInstallDraft,
+  useWorkOrder,
+} from '@/hooks/useWorkOrders'
 import { ApiError } from '@/lib/api'
 import { triggerScanFeedback } from '@/lib/scanFeedback'
 import { QrScanner } from '@/components/feature/QrScanner'
@@ -22,9 +28,21 @@ export default function InstallPage({
   const { id } = use(params)
   const router = useRouter()
   const { data: order, isLoading } = useWorkOrder(id)
+  const {
+    data: draftCovers,
+    error: draftError,
+    isFetching: isDraftFetching,
+    isLoading: isDraftLoading,
+  } = useInstallDraft(id, order?.installations)
+  const scanInstall = useScanInstallDraft()
+  const unscanInstall = useUnscanInstallDraft()
   const submitInstall = useSubmitInstall()
 
-  const [scannedCovers, setScannedCovers] = useState<ScannedCover[]>([])
+  const scannedCovers: ScannedCover[] = (draftCovers ?? []).map((cover) => ({
+    code: cover.code,
+    coverId: cover.coverId,
+    scannedAt: new Date(cover.scannedAt),
+  }))
   const [manualCode, setManualCode] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [photo, setPhoto] = useState<File | null>(null)
@@ -44,9 +62,9 @@ export default function InstallPage({
     }
   }, [id, order, router])
 
-  const addCode = (code: string) => {
+  const addCode = async (code: string) => {
     const trimmed = code.trim()
-    if (!trimmed) return
+    if (!trimmed || scanInstall.isPending || unscanInstall.isPending || isDraftFetching) return
     if (scannedCovers.some((c) => c.code === trimmed)) {
       const message = `รหัส ${trimmed} สแกนแล้ว`
       setScanError(message)
@@ -54,18 +72,47 @@ export default function InstallPage({
       triggerScanFeedback({ tone: 'warning' })
       return
     }
-    setScanError(null)
-    setScanFeedback({ tone: 'success', message: `เพิ่ม ${trimmed} แล้ว` })
-    triggerScanFeedback({ tone: 'success' })
-    setScannedCovers((prev) => [...prev, { code: trimmed, scannedAt: new Date() }])
+
+    try {
+      const cover = await scanInstall.mutateAsync({ id, coverCode: trimmed })
+      if (scannedCovers.some((item) => item.coverId === cover.id)) {
+        const message = `รหัส ${cover.assetCode} สแกนแล้ว`
+        setScanError(message)
+        setScanFeedback({ tone: 'warning', message })
+        triggerScanFeedback({ tone: 'warning' })
+        return
+      }
+
+      setScanError(null)
+      setScanFeedback({ tone: 'success', message: `เพิ่ม ${cover.assetCode} และบันทึก draft แล้ว` })
+      triggerScanFeedback({ tone: 'success' })
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'บันทึกรหัสที่สแกนไม่สำเร็จ'
+      setScanError(message)
+      setScanFeedback({ tone: 'error', message })
+      triggerScanFeedback({ tone: 'error' })
+    }
   }
 
-  const removeCode = (code: string) => {
-    setScannedCovers((prev) => prev.filter((c) => c.code !== code))
+  const removeCode = async (code: string) => {
+    const cover = scannedCovers.find((item) => item.code === code)
+    if (!cover?.coverId || unscanInstall.isPending || scanInstall.isPending) return
+
+    try {
+      await unscanInstall.mutateAsync({ id, coverId: cover.coverId })
+      setScanError(null)
+      setScanFeedback({ tone: 'success', message: `ยกเลิกสแกน ${cover.code} และลบจาก draft แล้ว` })
+      triggerScanFeedback({ tone: 'success' })
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'ยกเลิกรหัสที่สแกนไม่สำเร็จ'
+      setScanError(message)
+      setScanFeedback({ tone: 'error', message })
+      triggerScanFeedback({ tone: 'error' })
+    }
   }
 
   const handleManualAdd = () => {
-    addCode(manualCode)
+    void addCode(manualCode)
     setManualCode('')
   }
 
@@ -89,7 +136,9 @@ export default function InstallPage({
       await submitInstall.mutateAsync({
         id,
         payload: {
-          coverCodes: scannedCovers.map((c) => c.code),
+          coverIds: scannedCovers
+            .map((cover) => cover.coverId)
+            .filter((coverId): coverId is string => Boolean(coverId)),
           photoFile: photo,
         },
       })
@@ -117,7 +166,7 @@ export default function InstallPage({
     }
   }
 
-  if (isLoading) {
+  if (isLoading || (order && isDraftLoading)) {
     return (
       <div className="page-padding max-w-lg mx-auto">
         <div className="h-48 rounded-2xl bg-gray-100 animate-pulse" />
@@ -137,7 +186,13 @@ export default function InstallPage({
     : scanFeedback?.tone === 'warning'
       ? 'border-orange-200 bg-orange-50 text-orange-800'
       : 'border-red-200 bg-red-50 text-red-800'
-  const submitLocked = isSubmittingInstall || submitInstall.isPending || order.status !== 'SCHEDULED'
+  const draftMutationPending = scanInstall.isPending || unscanInstall.isPending
+  const submitLocked = isSubmittingInstall
+    || submitInstall.isPending
+    || draftMutationPending
+    || isDraftFetching
+    || Boolean(draftError)
+    || order.status !== 'SCHEDULED'
 
   return (
     <>
@@ -180,7 +235,12 @@ export default function InstallPage({
       </Card>
 
       {/* QR Scanner */}
-      <QrScanner onScan={addCode} />
+      <QrScanner onScan={(code) => { void addCode(code) }} />
+      {draftError && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+          โหลดรายการที่สแกนค้างไว้ไม่สำเร็จ กรุณาโหลดหน้านี้ใหม่ก่อนทำงานต่อ
+        </div>
+      )}
       {scanFeedback && (
         <div className={['rounded-2xl border px-4 py-3 text-sm font-medium shadow-sm', scanFeedbackClass].join(' ')} role="status">
           {scanFeedback.message}
@@ -216,7 +276,7 @@ export default function InstallPage({
         <h2 className="text-sm font-semibold text-gray-700 mb-3">
           สแกนแล้ว ({scannedQty} ชิ้น)
         </h2>
-        <CoverScanList covers={scannedCovers} onRemove={removeCode} readOnly={submitLocked} />
+        <CoverScanList covers={scannedCovers} onRemove={(code) => { void removeCode(code) }} readOnly={submitLocked} />
       </Card>
 
       {/* Photo capture */}

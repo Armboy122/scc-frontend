@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { ArrowDownLeft, ArrowUpRight, Handshake, Plus } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowDownLeft, ArrowRight, ArrowUpRight, Handshake, Plus, RefreshCw } from 'lucide-react'
 import { useBorrows } from '@/hooks/useBorrows'
+import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { StatusBadge } from '@/components/ui/StatusBadge'
-import type { BorrowDirection, BorrowStatus } from '@/lib/types'
+import type { BorrowDirection, BorrowQueryParams, BorrowStatus } from '@/lib/types'
 
 const STATUS_FILTERS: { label: string; value: BorrowStatus | 'ALL' }[] = [
   { label: 'ทั้งหมด', value: 'ALL' },
@@ -16,20 +17,43 @@ const STATUS_FILTERS: { label: string; value: BorrowStatus | 'ALL' }[] = [
   { label: 'ยืมอยู่', value: 'ON_LOAN' },
   { label: 'เกินกำหนด', value: 'OVERDUE' },
   { label: 'คืนแล้ว', value: 'RETURNED' },
+  { label: 'ปฏิเสธ', value: 'REJECTED' },
+  { label: 'ยกเลิก', value: 'CANCELLED' },
 ]
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' })
+const DIRECTION_FILTERS = [
+  { label: 'ยืมเข้า', value: 'in' as const, icon: ArrowDownLeft },
+  { label: 'ให้ยืมออก', value: 'out' as const, icon: ArrowUpRight },
+]
+
+function formatDate(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString('th-TH', {
+    timeZone: 'Asia/Bangkok',
+    day: '2-digit',
+    month: 'short',
+    year: '2-digit',
+  })
 }
 
 export default function BorrowsPage() {
-  const router = useRouter()
+  const { user } = useAuth()
   const [direction, setDirection] = useState<BorrowDirection>('in')
   const [status, setStatus] = useState<BorrowStatus | 'ALL'>('ALL')
-  const { data: borrows = [], isLoading, error } = useBorrows({
-    direction,
+  const isAdmin = user?.role === 'admin'
+  const canCreate = user?.role === 'exec' || user?.role === 'tech'
+  const query: BorrowQueryParams = {
+    ...(!isAdmin ? { direction } : {}),
     ...(status !== 'ALL' ? { status } : {}),
-  })
+  }
+  const {
+    data: borrows = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useBorrows(query)
 
   return (
     <div className="page-padding max-w-5xl mx-auto">
@@ -37,46 +61,55 @@ export default function BorrowsPage() {
         <div>
           <h1 className="text-xl font-bold text-gray-900">ใบยืมฉนวน</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            ติดตามคำขอยืม อนุมัติ และคืนฉนวนระหว่างสำนักงาน
+            ติดตามคำขอ การส่งมอบ และการคืนฉนวนระหว่างสำนักงาน
           </p>
         </div>
-        <Button
-          size="md"
-          leftIcon={<Plus className="w-4 h-4" />}
-          onClick={() => router.push('/borrows/new')}
-          className="w-full sm:w-auto"
-        >
-          สร้างใบยืม
-        </Button>
+        {canCreate && (
+          <Link
+            href="/borrows/new"
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-pea-600 bg-pea-600 px-4 text-sm font-medium text-white shadow-sm hover:bg-pea-700 sm:w-auto"
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            สร้างใบยืม
+          </Link>
+        )}
       </div>
 
-      <div className="flex rounded-xl border border-gray-200 bg-white p-1 mb-3">
-        {[
-          { label: 'ยืมเข้า', value: 'in' as const, icon: ArrowDownLeft },
-          { label: 'ให้ยืมออก', value: 'out' as const, icon: ArrowUpRight },
-        ].map((item) => {
-          const Icon = item.icon
-          const active = direction === item.value
-          return (
-            <button
-              key={item.value}
-              onClick={() => setDirection(item.value)}
-              className={[
-                'flex-1 h-10 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors',
-                active ? 'bg-pea-600 text-white' : 'text-gray-600 hover:bg-gray-50',
-              ].join(' ')}
-            >
-              <Icon className="w-4 h-4" aria-hidden />
-              {item.label}
-            </button>
-          )
-        })}
-      </div>
+      {isAdmin && (
+        <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          ผู้ดูแลระบบเห็นคำขอทุกสำนักงานในโหมดอ่านเป็นหลัก และไม่ใช่ผู้อนุมัติทางธุรกิจ
+        </div>
+      )}
+
+      {!isAdmin && (
+        <div className="flex rounded-xl border border-gray-200 bg-white p-1 mb-3" aria-label="ทิศทางการยืม">
+          {DIRECTION_FILTERS.map((item) => {
+            const Icon = item.icon
+            const active = direction === item.value
+            return (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => setDirection(item.value)}
+                className={[
+                  'flex-1 h-10 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors',
+                  active ? 'bg-pea-600 text-white' : 'text-gray-600 hover:bg-gray-50',
+                ].join(' ')}
+                aria-pressed={active}
+              >
+                <Icon className="w-4 h-4" aria-hidden />
+                {item.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide" aria-label="กรองสถานะ">
         {STATUS_FILTERS.map((item) => (
           <button
             key={item.value}
+            type="button"
             onClick={() => setStatus(item.value)}
             className={[
               'flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
@@ -84,6 +117,7 @@ export default function BorrowsPage() {
                 ? 'bg-pea-600 text-white'
                 : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300',
             ].join(' ')}
+            aria-pressed={status === item.value}
           >
             {item.label}
           </button>
@@ -91,71 +125,94 @@ export default function BorrowsPage() {
       </div>
 
       {isLoading && (
-        <div className="grid gap-3 md:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="card-surface h-32 animate-pulse bg-gray-100" />
+        <div className="grid gap-3 md:grid-cols-2" aria-label="กำลังโหลดใบยืม">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="card-surface h-40 animate-pulse bg-gray-100" />
           ))}
         </div>
       )}
 
-      {error && (
-        <div role="alert" className="card-surface p-6 text-center text-red-600 text-sm">
-          ไม่สามารถโหลดใบยืมได้
+      {!isLoading && error && (
+        <div role="alert" className="card-surface p-6 text-center">
+          <p className="text-sm font-medium text-red-600">ไม่สามารถโหลดใบยืมได้</p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4"
+            loading={isFetching}
+            leftIcon={<RefreshCw className="h-4 w-4" />}
+            onClick={() => void refetch()}
+          >
+            ลองอีกครั้ง
+          </Button>
         </div>
       )}
 
       {!isLoading && !error && borrows.length === 0 && (
         <div className="text-center py-16">
           <Handshake className="w-12 h-12 mx-auto mb-3 text-gray-300" aria-hidden />
-          <p className="text-gray-500 font-medium">ยังไม่มีใบยืม</p>
-          <p className="text-sm text-gray-400 mt-1">สร้างใบยืมเมื่อสต็อกสำนักงานไม่พอใช้งาน</p>
-          <Button className="mt-4" onClick={() => router.push('/borrows/new')}>
-            สร้างใบยืม
-          </Button>
+          <p className="text-gray-500 font-medium">ยังไม่มีใบยืมในมุมมองนี้</p>
+          <p className="text-sm text-gray-400 mt-1">เปลี่ยนทิศทางหรือสถานะเพื่อดูรายการอื่นได้</p>
+          {canCreate && (
+            <Link
+              href="/borrows/new"
+              className="mt-4 inline-flex h-10 items-center justify-center rounded-xl bg-pea-600 px-4 text-sm font-medium text-white hover:bg-pea-700"
+            >
+              สร้างใบยืม
+            </Link>
+          )}
         </div>
       )}
 
       {!isLoading && !error && borrows.length > 0 && (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {borrows.map((borrow) => {
-            const fromName = borrow.fromOffice?.name ?? borrow.fromOfficeId ?? 'สำนักงานต้นทาง'
-            const toName = borrow.toOffice?.name ?? borrow.toOfficeId ?? 'สำนักงานปลายทาง'
-            return (
+          {borrows.map((borrow) => (
+            <Link
+              key={borrow.id}
+              href={`/borrows/${borrow.id}`}
+              className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pea-500 focus-visible:ring-offset-2"
+              aria-label={`เปิดใบยืมจาก ${borrow.lenderOffice.name} ไป ${borrow.borrowerOffice.name}`}
+            >
               <Card
-                key={borrow.id}
+                as="article"
                 hoverable
-                onClick={() => router.push(`/borrows/${borrow.id}`)}
                 className={borrow.status === 'OVERDUE' ? 'border-red-200 bg-red-50' : ''}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm text-gray-500">
-                      {direction === 'in' ? 'ยืมจาก' : 'ให้ยืมแก่'}
-                    </p>
-                    <h2 className="font-semibold text-gray-900 truncate">
-                      {direction === 'in' ? fromName : toName}
+                    <p className="text-xs text-gray-500">ผู้ให้ยืม</p>
+                    <h2 className="font-semibold text-gray-900 break-words">
+                      {borrow.lenderOffice.name}
                     </h2>
                   </div>
                   <StatusBadge borrowStatus={borrow.status} size="sm" />
                 </div>
-                <div className="grid grid-cols-3 gap-2 mt-4 text-sm">
-                  <div>
-                    <p className="text-xs text-gray-500">จำนวน</p>
-                    <p className="font-mono font-bold text-lg text-gray-900">{borrow.qty}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">ยืม</p>
-                    <p className="font-medium text-gray-800">{formatDate(borrow.borrowDate)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">คืน</p>
-                    <p className="font-medium text-gray-800">{formatDate(borrow.returnDate)}</p>
-                  </div>
+
+                <div className="my-3 flex min-w-0 items-center gap-2 text-sm text-gray-500">
+                  <ArrowRight className="h-4 w-4 flex-shrink-0 text-pea-600" aria-hidden />
+                  <span className="truncate">ผู้ยืม: {borrow.borrowerOffice.name}</span>
                 </div>
+
+                <dl className="grid grid-cols-3 gap-2 text-sm">
+                  <div>
+                    <dt className="text-xs text-gray-500">จำนวน</dt>
+                    <dd className="font-mono font-bold text-lg text-gray-900">
+                      {borrow.requestedQty}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">วันที่ขอ</dt>
+                    <dd className="font-medium text-gray-800">{formatDate(borrow.createdAt)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">กำหนดคืน</dt>
+                    <dd className="font-medium text-gray-800">{formatDate(borrow.returnDate)}</dd>
+                  </div>
+                </dl>
                 <p className="text-xs text-gray-400 mt-3 font-mono truncate">{borrow.id}</p>
               </Card>
-            )
-          })}
+            </Link>
+          ))}
         </div>
       )}
     </div>

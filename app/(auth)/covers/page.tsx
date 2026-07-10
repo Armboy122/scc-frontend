@@ -24,18 +24,12 @@ export default function CoversPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<CoverStatus | 'ALL'>('ALL')
 
-  const { data: covers = [], isLoading, error } = useCovers(
-    statusFilter !== 'ALL' ? { status: statusFilter } : undefined,
-  )
+  const { data: covers = [], isLoading, error } = useCovers({
+    status: statusFilter !== 'ALL' ? statusFilter : undefined,
+    q: search.trim() || undefined,
+  })
 
   const canRegister = user?.role === 'admin' || Boolean(user?.officeId)
-
-  const filtered = covers.filter(
-    (c) =>
-      !search ||
-      c.assetCode.toLowerCase().includes(search.toLowerCase()) ||
-      c.qrCode.toLowerCase().includes(search.toLowerCase()),
-  )
 
   return (
     <div className="page-padding max-w-6xl mx-auto">
@@ -99,18 +93,18 @@ export default function CoversPage() {
         </div>
       )}
 
-      {!isLoading && !error && filtered.length === 0 && (
+      {!isLoading && !error && covers.length === 0 && (
         <div className="text-center py-16">
           <Shield className="w-12 h-12 mx-auto mb-3 text-gray-300" aria-hidden />
           <p className="text-gray-500">ไม่พบฉนวนที่ตรงกับการค้นหา</p>
         </div>
       )}
 
-      {!isLoading && !error && filtered.length > 0 && (
+      {!isLoading && !error && covers.length > 0 && (
         <>
           {/* Mobile cards */}
           <div className="md:hidden space-y-2">
-            {filtered.map((cover) => (
+            {covers.map((cover) => (
               <div key={cover.id} className="card-surface p-3 space-y-3">
                 <div className="flex items-center gap-3">
                 <Shield className="w-8 h-8 text-pea-300 flex-shrink-0" aria-hidden />
@@ -139,7 +133,7 @@ export default function CoversPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((cover) => (
+                {covers.map((cover) => (
                   <tr key={cover.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="px-4 py-3 font-mono font-medium">{cover.assetCode}</td>
                     <td className="px-4 py-3 font-mono text-gray-600 text-xs">{cover.qrCode}</td>
@@ -160,7 +154,7 @@ export default function CoversPage() {
           </div>
 
           <p className="text-xs text-gray-400 mt-3 text-right">
-            แสดง {filtered.length} รายการ
+            แสดง {covers.length} รายการ
           </p>
         </>
       )}

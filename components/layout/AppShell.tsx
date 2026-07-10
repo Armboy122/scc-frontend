@@ -1,7 +1,8 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   BarChart3,
   Bell,
@@ -13,18 +14,25 @@ import {
   Package,
   Radio,
   Shield,
+  TriangleAlert,
   User,
 } from 'lucide-react'
+import { useUnreadNotificationCount } from '@/hooks/useNotifications'
 import { useAuth, AuthGuard } from '@/lib/auth'
+import {
+  PHASE_FEATURE_FLAGS,
+  type PhaseFeatureFlags,
+} from '@/lib/featureFlags'
 import type { Role } from '@/lib/types'
 
 // ─── Nav definition ───────────────────────────────────────────────────────────
 
-interface NavItem {
+export interface NavItem {
   href: string
   label: string
   icon: React.ElementType
   roles?: Role[]
+  feature?: keyof PhaseFeatureFlags
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -32,10 +40,11 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard',    label: 'แดชบอร์ด',  icon: BarChart3,  roles: ['admin', 'exec'] },
   { href: '/stock',        label: 'สต็อก',     icon: Package },
   { href: '/covers',       label: 'ฉนวน',      icon: Shield },
-  { href: '/borrows',      label: 'ใบยืม',     icon: Handshake,  roles: ['exec', 'tech'] },
-  { href: '/admin/usage-modes', label: 'โหมดใช้งาน', icon: BriefcaseBusiness, roles: ['admin'] },
-  { href: '/admin/rfid',   label: 'RFID',       icon: Radio,      roles: ['admin'] },
-  { href: '/admin/reports', label: 'รายงาน',    icon: FileBarChart, roles: ['admin'] },
+  { href: '/borrows',      label: 'ใบยืม',     icon: Handshake,  roles: ['admin', 'exec', 'tech'], feature: 'phase2Borrowing' },
+  { href: '/discrepancies', label: 'ข้อคลาดเคลื่อน', icon: TriangleAlert, roles: ['admin', 'exec', 'tech'], feature: 'phase2Borrowing' },
+  { href: '/admin/usage-modes', label: 'โหมดใช้งาน', icon: BriefcaseBusiness, roles: ['admin'], feature: 'phase3Expansion' },
+  { href: '/admin/rfid',   label: 'RFID',       icon: Radio,      roles: ['admin'], feature: 'phase3Expansion' },
+  { href: '/admin/reports', label: 'รายงาน',    icon: FileBarChart, roles: ['admin'], feature: 'phase3Expansion' },
   { href: '/notifications', label: 'แจ้งเตือน', icon: Bell },
   { href: '/profile',      label: 'โปรไฟล์',   icon: User },
 ]
@@ -63,7 +72,15 @@ function isActive(href: string, pathname: string): boolean {
 
 // ─── Sidebar nav item ─────────────────────────────────────────────────────────
 
-function SidebarNavItem({ item, pathname }: { item: NavItem; pathname: string }) {
+function SidebarNavItem({
+  item,
+  pathname,
+  badgeCount = 0,
+}: {
+  item: NavItem
+  pathname: string
+  badgeCount?: number
+}) {
   const active = isActive(item.href, pathname)
   const Icon = item.icon
   return (
@@ -80,14 +97,30 @@ function SidebarNavItem({ item, pathname }: { item: NavItem; pathname: string })
       aria-current={active ? 'page' : undefined}
     >
       <Icon className="w-5 h-5 flex-shrink-0" aria-hidden />
-      <span className="truncate">{item.label}</span>
+      <span className="flex-1 truncate">{item.label}</span>
+      {badgeCount > 0 && (
+        <span
+          className="min-w-5 rounded-full bg-white px-1.5 py-0.5 text-center text-[10px] font-bold leading-none text-pea-700"
+          aria-label={`${badgeCount} รายการยังไม่อ่าน`}
+        >
+          {badgeCount > 99 ? '99+' : badgeCount}
+        </span>
+      )}
     </Link>
   )
 }
 
 // ─── Bottom nav item (mobile) ─────────────────────────────────────────────────
 
-function BottomNavItem({ item, pathname }: { item: NavItem; pathname: string }) {
+function BottomNavItem({
+  item,
+  pathname,
+  badgeCount = 0,
+}: {
+  item: NavItem
+  pathname: string
+  badgeCount?: number
+}) {
   const active = isActive(item.href, pathname)
   const Icon = item.icon
   return (
@@ -102,27 +135,61 @@ function BottomNavItem({ item, pathname }: { item: NavItem; pathname: string }) 
       ].join(' ')}
       aria-current={active ? 'page' : undefined}
     >
-      <Icon
-        className={['w-6 h-6', active ? 'text-pea-600' : 'text-gray-400'].join(' ')}
-        aria-hidden
-      />
+      <span className="relative">
+        <Icon
+          className={['w-6 h-6', active ? 'text-pea-600' : 'text-gray-400'].join(' ')}
+          aria-hidden
+        />
+        {badgeCount > 0 && (
+          <span
+            className="absolute -right-3 -top-2 min-w-4 rounded-full bg-red-600 px-1 text-center text-[9px] font-bold leading-4 text-white"
+            aria-label={`${badgeCount} รายการยังไม่อ่าน`}
+          >
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </span>
+        )}
+      </span>
       <span className="truncate">{item.label}</span>
     </Link>
   )
 }
 
 export function getMobileNavItems(items: NavItem[]): NavItem[] {
-  const maxItems = 5
-  const profileItem = items.find((item) => item.href === '/profile')
+  return [...items]
+}
 
-  if (!profileItem || items.length <= maxItems) {
-    return items.slice(0, maxItems)
+export function getVisibleNavItems(
+  role: Role | undefined,
+  flags: PhaseFeatureFlags = PHASE_FEATURE_FLAGS,
+): NavItem[] {
+  return NAV_ITEMS.filter((item) => {
+    if (item.roles && (!role || !item.roles.includes(role))) return false
+    if (item.feature && !flags[item.feature]) return false
+    return true
+  })
+}
+
+export function isPhaseRouteEnabled(
+  pathname: string,
+  flags: PhaseFeatureFlags = PHASE_FEATURE_FLAGS,
+): boolean {
+  if (pathname === '/borrows' || pathname.startsWith('/borrows/')) {
+    return flags.phase2Borrowing
   }
-
-  return [
-    ...items.filter((item) => item.href !== '/profile').slice(0, maxItems - 1),
-    profileItem,
-  ]
+  if (pathname === '/discrepancies' || pathname.startsWith('/discrepancies/')) {
+    return flags.phase2Borrowing
+  }
+  if (
+    pathname === '/admin/usage-modes'
+    || pathname.startsWith('/admin/usage-modes/')
+    || pathname === '/admin/rfid'
+    || pathname.startsWith('/admin/rfid/')
+    || pathname === '/admin/reports'
+    || pathname.startsWith('/admin/reports/')
+  ) {
+    return flags.phase3Expansion
+  }
+  return true
 }
 
 // ─── AppShell ─────────────────────────────────────────────────────────────────
@@ -138,13 +205,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 function AppShellInner({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth()
   const pathname = usePathname()
+  const router = useRouter()
+  const { data: unreadNotificationCount = 0 } = useUnreadNotificationCount(Boolean(user))
+  const routeEnabled = isPhaseRouteEnabled(pathname)
 
-  const visibleItems = NAV_ITEMS.filter(
-    (item) => !item.roles || (user?.role && item.roles.includes(user.role)),
-  )
+  useEffect(() => {
+    if (!routeEnabled) router.replace('/')
+  }, [routeEnabled, router])
 
-  // Mobile bottom nav: max 5 items, but keep profile reachable for account actions.
+  const visibleItems = getVisibleNavItems(user?.role)
+
+  // Keep every allowed Phase 1 route reachable; flagged expansion routes can scroll.
   const mobileItems = getMobileNavItems(visibleItems)
+
+  if (!routeEnabled) return null
 
   return (
     <div className="flex h-dvh bg-gray-50">
@@ -174,7 +248,12 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {visibleItems.map((item) => (
-            <SidebarNavItem key={item.href} item={item} pathname={pathname} />
+            <SidebarNavItem
+              key={item.href}
+              item={item}
+              pathname={pathname}
+              badgeCount={item.href === '/notifications' ? unreadNotificationCount : 0}
+            />
           ))}
         </nav>
 
@@ -252,10 +331,14 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         aria-label="เมนูล่าง"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="flex items-stretch">
+        <div className="flex items-stretch overflow-x-auto">
           {mobileItems.map((item) => (
-            <div key={item.href} className="flex-1">
-              <BottomNavItem item={item} pathname={pathname} />
+            <div key={item.href} className="min-w-16 flex-1">
+              <BottomNavItem
+                item={item}
+                pathname={pathname}
+                badgeCount={item.href === '/notifications' ? unreadNotificationCount : 0}
+              />
             </div>
           ))}
         </div>

@@ -6,7 +6,9 @@ export type WorkOrderDisplayStatus =
   | 'DUE_SOON'
   | 'DUE_TODAY'
   | 'OVERDUE'
+  | 'REMOVING'
   | 'COMPLETED'
+  | 'CANCELLED'
 
 export interface WorkOrderDisplayStatusConfig {
   value: WorkOrderDisplayStatus
@@ -43,10 +45,20 @@ export const WORK_ORDER_DISPLAY_STATUS_CONFIG: Record<WorkOrderDisplayStatus, Wo
     label: 'เกินกำหนด',
     className: 'bg-red-50 text-red-700 border-red-200',
   },
+  REMOVING: {
+    value: 'REMOVING',
+    label: 'กำลังถอด',
+    className: 'bg-[--status-removing-bg] text-[--status-removing] border-violet-200',
+  },
   COMPLETED: {
     value: 'COMPLETED',
     label: 'เสร็จสิ้น',
     className: 'bg-[--status-completed-bg] text-[--status-completed] border-emerald-200',
+  },
+  CANCELLED: {
+    value: 'CANCELLED',
+    label: 'ยกเลิก',
+    className: 'bg-[--status-cancelled-bg] text-[--status-cancelled] border-gray-200',
   },
 }
 
@@ -66,12 +78,22 @@ export function getWorkOrderDisplayStatus(order: WorkOrder, now: Date = new Date
     return 'COMPLETED'
   }
 
-  if (order.status === 'SCHEDULED' || order.status === 'INSTALLING') {
+  if (order.status === 'CANCELLED') {
+    return 'CANCELLED'
+  }
+
+  if (order.status === 'SCHEDULED') {
     return 'PENDING_INSTALL'
   }
 
+  if (order.status === 'REMOVING') {
+    return 'REMOVING'
+  }
+
   const removalDay = parseDateOnly(order.removalDate)
-  if (removalDay === null) return 'INSTALLED'
+  if (removalDay === null) {
+    return order.status === 'REMOVAL_DUE' ? 'DUE_TODAY' : 'INSTALLED'
+  }
 
   const today = startOfDay(now)
   const daysLeft = Math.round((removalDay - today) / DAY_MS)

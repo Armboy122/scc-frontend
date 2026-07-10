@@ -45,13 +45,20 @@ open http://127.0.0.1:3000
 npm test
 ```
 
-## Vercel env
+## Production public config
 
-For production, set this in Vercel Project Environment Variables:
+Tracked `.env.production` defines the public defaults used by production builds:
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=https://api.103.117.151.158.sslip.io/api/v1
+NEXT_PUBLIC_ENABLE_PHASE2_BORROWING=true
+NEXT_PUBLIC_ENABLE_PHASE3_EXPANSION=false
 ```
+
+All `NEXT_PUBLIC_*` values are bundled into browser JavaScript and must never contain secrets.
+Vercel Project Environment Variables can override these defaults per environment, including
+temporarily setting Phase 2 to `false` for rollback. Keep secrets only in Vercel or ignored
+`.env.*.local` files.
 
 When the permanent API domain is ready, replace the temporary `sslip.io` host with:
 
@@ -75,7 +82,7 @@ Use these settings when importing `Armboy122/scc-frontend` into Vercel:
 Before deploying, verify locally:
 
 ```bash
-npm run lint
 npm test
-NEXT_PUBLIC_API_BASE_URL=https://api.103.117.151.158.sslip.io/api/v1 npm run build
+npm run lint
+npm run build
 ```

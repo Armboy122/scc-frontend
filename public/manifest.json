@@ -2,10 +2,12 @@
   "name": "Smart Cover Connect",
   "short_name": "SCC",
   "description": "ระบบติดตามการให้เช่าฉนวนครอบสายไฟ",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#ffffff",
+  "background_color": "#1e0a30",
   "theme_color": "#6d28a8",
   "lang": "th",
   "icons": [
@@ -23,5 +25,6 @@
     }
   ],
   "categories": ["utilities", "business"],
-  "screenshots": []
+  "screenshots": [],
+  "prefer_related_applications": false
 }

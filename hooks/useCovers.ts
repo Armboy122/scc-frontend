@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { invalidateOperationalQueries } from '@/lib/queryPolicy'
 import type { Cover, CoverQueryParams, RegisterCoverRequest } from '@/lib/types'
 
 const KEYS = {
@@ -41,9 +42,7 @@ export function useRegisterCover() {
   return useMutation({
     mutationFn: (payload: RegisterCoverRequest) =>
       api.post<Cover>('/covers', payload),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: KEYS.all })
-    },
+    onSuccess: () => invalidateOperationalQueries(qc),
   })
 }
 
@@ -54,9 +53,7 @@ export function useBatchRegisterCovers() {
   return useMutation({
     mutationFn: (payload: { ownerOfficeId: string; items: RegisterCoverRequest[] }) =>
       api.post<Cover[]>('/covers/batch', payload),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: KEYS.all })
-    },
+    onSuccess: () => invalidateOperationalQueries(qc),
   })
 }
 
@@ -65,10 +62,13 @@ export function useBatchRegisterCovers() {
 export function useRetireCover() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => api.patch<Cover>(`/covers/${id}/retire`),
-    onSuccess: (_data, id) => {
-      void qc.invalidateQueries({ queryKey: KEYS.detail(id) })
-      void qc.invalidateQueries({ queryKey: KEYS.all })
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      api.post<void>(`/covers/${id}/retire`, { reason }),
+    onSuccess: async (_data, { id }) => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: KEYS.detail(id) }),
+        invalidateOperationalQueries(qc),
+      ])
     },
   })
 }

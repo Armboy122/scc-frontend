@@ -42,6 +42,12 @@ export default function LoginPage() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setServerError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
+      } else if (err instanceof ApiError && err.status === 429) {
+        setServerError(
+          err.retryAfterSeconds
+            ? `ลองเข้าสู่ระบบบ่อยเกินไป กรุณารอ ${err.retryAfterSeconds} วินาทีแล้วลองใหม่`
+            : 'ลองเข้าสู่ระบบบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่',
+        )
       } else {
         setServerError('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง')
       }
@@ -76,7 +82,12 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+          <form
+            method="post"
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-4"
+            noValidate
+          >
             <Input
               label="ชื่อผู้ใช้"
               type="text"

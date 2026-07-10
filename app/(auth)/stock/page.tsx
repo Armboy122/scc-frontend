@@ -55,9 +55,12 @@ export default function StockPage() {
                   <StockBadge count={stock.total} label="ทั้งหมด" />
                 </div>
                 <dl className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="bg-green-50 rounded-lg p-2.5 text-center">
-                    <dt className="text-xs text-gray-500 mb-1">ในคลัง</dt>
-                    <dd className="font-bold text-green-700 text-lg tabular-nums">{stock.inStock}</dd>
+                  <div className="col-span-2 bg-green-50 rounded-lg p-2.5 text-center">
+                    <dt className="text-xs text-gray-500 mb-1">พร้อมสร้างใบงาน</dt>
+                    <dd className="font-bold text-green-700 text-lg tabular-nums">{stock.availableForWorkOrder}</dd>
+                    <dd className="mt-1 text-xs text-gray-500">
+                      ในคลังจริง {stock.inStock} · กันใบงาน {stock.reservedPlanned} · กันให้ยืม {stock.reservedBorrow}
+                    </dd>
                   </div>
                   <div className="bg-blue-50 rounded-lg p-2.5 text-center">
                     <dt className="text-xs text-gray-500 mb-1">ติดตั้ง</dt>
@@ -78,11 +81,14 @@ export default function StockPage() {
 
           {/* Desktop table */}
           <div className="hidden md:block card-surface overflow-x-auto">
-            <table className="w-full min-w-[760px] text-sm">
+            <table className="w-full min-w-[1040px] text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">สำนักงาน</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700">พร้อมติดตั้ง</th>
+                  <th className="text-right px-4 py-3 font-semibold text-gray-700">พร้อมสร้างใบงาน</th>
+                  <th className="text-right px-4 py-3 font-semibold text-gray-700">ในคลังจริง</th>
+                  <th className="text-right px-4 py-3 font-semibold text-gray-700">กันใบงาน</th>
+                  <th className="text-right px-4 py-3 font-semibold text-gray-700">กันให้ยืม</th>
                   <th className="text-right px-4 py-3 font-semibold text-gray-700">ติดตั้ง</th>
                   <th className="text-right px-4 py-3 font-semibold text-gray-700">ให้ยืม</th>
                   <th className="text-right px-4 py-3 font-semibold text-gray-700">ยืมมา</th>
@@ -99,7 +105,16 @@ export default function StockPage() {
                       {officeDisplayName(stock)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className="font-bold text-green-700 tabular-nums">{stock.inStock}</span>
+                      <span className="font-bold text-green-700 tabular-nums">{stock.availableForWorkOrder}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {stock.inStock}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {stock.reservedPlanned}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {stock.reservedBorrow}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <span className="font-bold text-blue-700 tabular-nums">{stock.installed}</span>
@@ -120,7 +135,16 @@ export default function StockPage() {
                 <tr className="bg-gray-50 border-t border-gray-200 font-semibold">
                   <td className="px-4 py-3 text-gray-700">รวมทั้งหมด</td>
                   <td className="px-4 py-3 text-right text-green-700 tabular-nums">
+                    {stockList.reduce((s, r) => s + r.availableForWorkOrder, 0)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
                     {stockList.reduce((s, r) => s + r.inStock, 0)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {stockList.reduce((s, r) => s + r.reservedPlanned, 0)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {stockList.reduce((s, r) => s + r.reservedBorrow, 0)}
                   </td>
                   <td className="px-4 py-3 text-right text-blue-700 tabular-nums">
                     {stockList.reduce((s, r) => s + r.installed, 0)}

@@ -5,7 +5,7 @@ export type EvidenceKind = 'install' | 'remove'
 
 interface PresignUploadResponse {
   uploadUrl: string
-  fileUrl: string
+  objectKey: string
 }
 
 interface UploadEvidencePhotoParams {
@@ -14,6 +14,9 @@ interface UploadEvidencePhotoParams {
   coverIds: string[]
   file: File
 }
+
+const MAX_EVIDENCE_BYTES = 10 * 1024 * 1024
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
 const photoEndpoint: Record<EvidenceKind, (workOrderId: string, coverId: string) => string> = {
   install: (workOrderId, coverId) => `/workorders/${workOrderId}/installations/${coverId}/photo`,
@@ -30,6 +33,20 @@ export function matchCoverByCode(covers: Cover[] | undefined, code: string): Cov
   )
 }
 
+function evidenceContentType(file: File): string {
+  const contentType = file.type.split(';', 1)[0].trim().toLowerCase()
+  if (!ALLOWED_IMAGE_TYPES.has(contentType)) {
+    throw new Error('รูปหลักฐานต้องเป็น JPEG, PNG หรือ WebP เท่านั้น')
+  }
+  if (file.size <= 0) {
+    throw new Error('ไฟล์รูปหลักฐานว่างเปล่า')
+  }
+  if (file.size > MAX_EVIDENCE_BYTES) {
+    throw new Error('รูปหลักฐานต้องมีขนาดไม่เกิน 10 MiB')
+  }
+  return contentType
+}
+
 export async function uploadEvidencePhoto({
   kind,
   workOrderId,
@@ -40,32 +57,43 @@ export async function uploadEvidencePhoto({
   if (uniqueCoverIds.length === 0) {
     throw new Error('ไม่พบรายการฉนวนสำหรับผูกรูปหลักฐาน')
   }
+  const contentType = evidenceContentType(file)
+  const attachedObjectKeys: string[] = []
 
-  const presign = await api.post<PresignUploadResponse>('/uploads/presign', {
-    kind,
-    workOrderId,
-    coverId: uniqueCoverIds[0],
-  })
+  // One photo may document a batch, but every installation receives its own
+  // relation-scoped immutable object key. Sequential writes make partial
+  // progress safe to retry without rescanning persisted install/removal state.
+  for (const coverId of uniqueCoverIds) {
+    const presign = await api.post<PresignUploadResponse>('/uploads/presign', {
+      kind,
+      workOrderId,
+      coverId,
+      contentType,
+      size: file.size,
+    })
 
-  if (!presign.data?.uploadUrl || !presign.data.fileUrl) {
-    throw new Error('ไม่สามารถขอ URL สำหรับอัปโหลดรูปได้')
+    if (!presign.data?.uploadUrl || !presign.data.objectKey) {
+      throw new Error('ไม่สามารถขอ URL สำหรับอัปโหลดรูปได้')
+    }
+
+    const uploadRes = await fetch(presign.data.uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': contentType,
+        'If-None-Match': '*',
+      },
+      body: file,
+    })
+
+    if (!uploadRes.ok) {
+      throw new Error('อัปโหลดรูปหลักฐานไป MinIO ไม่สำเร็จ')
+    }
+
+    await api.post(photoEndpoint[kind](workOrderId, coverId), {
+      objectKey: presign.data.objectKey,
+    })
+    attachedObjectKeys.push(presign.data.objectKey)
   }
 
-  const uploadRes = await fetch(presign.data.uploadUrl, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': file.type || 'image/jpeg',
-    },
-    body: file,
-  })
-
-  if (!uploadRes.ok) {
-    throw new Error('อัปโหลดรูปหลักฐานไป MinIO ไม่สำเร็จ')
-  }
-
-  await Promise.all(uniqueCoverIds.map((coverId) =>
-    api.post(photoEndpoint[kind](workOrderId, coverId), { fileUrl: presign.data!.fileUrl }),
-  ))
-
-  return presign.data.fileUrl
+  return attachedObjectKeys[0]
 }

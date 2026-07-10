@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Smart Cover Connect">
+  <defs>
+    <linearGradient id="background" x1="64" y1="32" x2="448" y2="480" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7C30D8"/>
+      <stop offset="1" stop-color="#471670"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="#1E0A30"/>
+  <circle cx="256" cy="256" r="202" fill="url(#background)"/>
+  <path d="M286 108L171 282H242L220 358L341 224H270L286 108Z" fill="#FFFFFF"/>
+  <text x="256" y="414" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="700" letter-spacing="5" text-anchor="middle">SC</text>
+</svg>

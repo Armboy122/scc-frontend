@@ -6,14 +6,23 @@ export type CoverStatus = 'IN_STOCK' | 'INSTALLED' | 'RETIRED'
 
 export type WorkOrderStatus =
   | 'SCHEDULED'
-  | 'INSTALLING'
   | 'ACTIVE'
   | 'REMOVAL_DUE'
   | 'REMOVING'
   | 'COMPLETED'
   | 'CANCELLED'
 
-export type NotificationType = 'REMOVAL_DUE' | 'OVERDUE' | 'INFO'
+export type NotificationType =
+  | 'REMOVAL_DUE'
+  | 'BORROW_REQUESTED'
+  | 'BORROW_APPROVED'
+  | 'BORROW_REJECTED'
+  | 'BORROW_ACTIVATED'
+  | 'BORROW_OVERDUE'
+  | 'BORROW_RETURNED'
+  | 'DISCREPANCY_REPORTED'
+  | 'DISCREPANCY_RESOLVED'
+  | 'WORKORDER_ASSIGNED'
 
 export type BorrowStatus =
   | 'REQUESTED'
@@ -25,6 +34,18 @@ export type BorrowStatus =
   | 'OVERDUE'
 
 export type BorrowDirection = 'in' | 'out'
+
+export type DiscrepancyType =
+  | 'UNEXPECTED_COVER'
+  | 'MISSING_COVER'
+  | 'CAPACITY_SHORTFALL'
+  | 'OTHER'
+
+export type ManualDiscrepancyType = Exclude<DiscrepancyType, 'CAPACITY_SHORTFALL'>
+
+export type DiscrepancyStatus = 'OPEN' | 'RESOLVED'
+
+export type Rfc3339Timestamp = string
 
 // ─── Core domain models ───────────────────────────────────────────────────────
 
@@ -41,6 +62,12 @@ export interface User {
   role: Role
   officeId?: string
   office?: Office
+}
+
+export interface TechnicianOption {
+  id: string
+  name: string
+  officeId: string
 }
 
 export interface Cover {
@@ -61,12 +88,14 @@ export interface Installation {
   id: string
   workOrderId: string
   coverId: string
-  cover?: Cover
+  createdAt: string
   installedAt?: string
   removedAt?: string
-  photoUrl?: string
-  latitude?: number
-  longitude?: number
+  photoInstallUrl?: string
+  photoRemoveUrl?: string
+  gpsLat?: number
+  gpsLng?: number
+  remark?: string
 }
 
 export interface WorkOrder {
@@ -85,6 +114,8 @@ export interface WorkOrder {
   note?: string
   officeId: string
   office?: Office
+  assignedToId?: string
+  /** @deprecated legacy frontend alias; API responses use assignedToId. */
   assignedTo?: string
   assignedUser?: User
   installations?: Installation[]
@@ -97,6 +128,7 @@ export interface StockSummary {
   office?: Office
   inStock: number
   reservedPlanned: number
+  reservedBorrow: number
   availableForWorkOrder: number
   installed: number
   onLoanOut: number
@@ -104,34 +136,91 @@ export interface StockSummary {
   total: number
 }
 
+export interface DashboardWorkOrdersByStatus {
+  SCHEDULED: number
+  ACTIVE: number
+  REMOVAL_DUE: number
+  REMOVING: number
+  COMPLETED: number
+  CANCELLED: number
+}
+
+export interface DashboardOfficeStock {
+  office: Office
+  stock: StockSummary
+}
+
+export interface DashboardSummary {
+  stockByOffice: DashboardOfficeStock[]
+  workOrdersByStatus: DashboardWorkOrdersByStatus
+  dueSoon: WorkOrder[]
+  overdueRemovals: WorkOrder[]
+}
+
 export interface Notification {
   id: string
   userId: string
-  title: string
-  message: string
   type: NotificationType
-  read: boolean
+  message: string
   workOrderId?: string
-  workOrder?: Pick<WorkOrder, 'id' | 'customerName' | 'status'>
+  borrowId?: string
+  discrepancyId?: string
+  readAt?: string
   createdAt: string
+}
+
+export interface BorrowCoverSummary {
+  id: string
+  assetCode: string
+  status: CoverStatus
+  ownerOfficeId: string
+  currentOfficeId: string
 }
 
 export interface Borrow {
   id: string
   status: BorrowStatus
-  fromOfficeId?: string
-  toOfficeId?: string
-  fromOffice?: Office
-  toOffice?: Office
-  qty: number
-  coverIds?: string[]
-  covers?: Cover[]
-  borrowDate: string
-  returnDate: string
-  createdById?: string
-  createdBy?: User
-  createdAt?: string
-  updatedAt?: string
+  borrowerOffice: Office
+  lenderOffice: Office
+  requestedQty: number
+  covers: BorrowCoverSummary[]
+  returnDate: Rfc3339Timestamp
+  note: string | null
+  createdById: string
+  approvedById: string | null
+  activatedById: string | null
+  returnedById: string | null
+  createdAt: Rfc3339Timestamp
+  updatedAt: Rfc3339Timestamp
+  activatedAt: Rfc3339Timestamp | null
+  returnedAt: Rfc3339Timestamp | null
+}
+
+export interface BorrowAvailability {
+  office: Office
+  ownedInStock: number
+  reservedPlanned: number
+  reservedBorrow: number
+  borrowableCapacity: number
+}
+
+export interface Discrepancy {
+  id: string
+  office: Office
+  type: DiscrepancyType
+  status: DiscrepancyStatus
+  reason: string
+  expectedQty: number | null
+  observedQty: number | null
+  coverId: string | null
+  workOrderId: string | null
+  borrowId: string | null
+  reportedById: string | null
+  resolvedById: string | null
+  resolutionNote: string | null
+  createdAt: Rfc3339Timestamp
+  updatedAt: Rfc3339Timestamp
+  resolvedAt: Rfc3339Timestamp | null
 }
 
 // ─── API envelope ─────────────────────────────────────────────────────────────
@@ -163,7 +252,7 @@ export interface LoginResponse {
 
 export interface RefreshResponse {
   accessToken: string
-  refreshToken?: string
+  refreshToken: string
   user: User
 }
 
@@ -187,21 +276,35 @@ export interface RegisterCoverRequest {
 }
 
 export interface SubmitInstallRequest {
-  coverCodes: string[]
+  coverIds: string[]
   photoFile?: File
 }
 
-export interface SubmitRemoveRequest {
-  coverCodes: string[]
-  photoFile?: File
+export interface CompleteRemovalRequest {
+  installations: Installation[]
+  photoFile: File
 }
 
 export interface CreateBorrowRequest {
-  toOfficeId: string
-  qty: number
-  coverIds?: string[]
-  borrowDate: string
-  returnDate: string
+  lenderOfficeId: string
+  requestedQty: number
+  returnDate: Rfc3339Timestamp
+  note?: string
+}
+
+export interface CreateDiscrepancyRequest {
+  officeId?: string
+  type: ManualDiscrepancyType
+  reason: string
+  expectedQty?: number
+  observedQty?: number
+  coverId?: string
+  workOrderId?: string
+  borrowId?: string
+}
+
+export interface ResolveDiscrepancyRequest {
+  resolutionNote: string
 }
 
 // ─── Query helpers ────────────────────────────────────────────────────────────
@@ -213,17 +316,23 @@ export interface PaginationParams {
 
 export interface WorkOrderQueryParams extends PaginationParams {
   status?: WorkOrderStatus
-  assignedTo?: string
+  mine?: boolean
   officeId?: string
 }
 
 export interface CoverQueryParams extends PaginationParams {
   status?: CoverStatus
   officeId?: string
-  search?: string
+  q?: string
 }
 
 export interface BorrowQueryParams extends PaginationParams {
   direction?: BorrowDirection
   status?: BorrowStatus
+}
+
+export interface DiscrepancyQueryParams extends PaginationParams {
+  status?: DiscrepancyStatus
+  type?: DiscrepancyType
+  officeId?: string
 }

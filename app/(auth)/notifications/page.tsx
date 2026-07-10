@@ -1,119 +1,230 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
-import { Bell, AlertTriangle, Info, Clock } from 'lucide-react'
-import { api } from '@/lib/api'
-import { Card } from '@/components/ui/Card'
+import Link from 'next/link'
+import {
+  Bell,
+  CheckCircle2,
+  CircleX,
+  ClipboardCheck,
+  Clock,
+  Handshake,
+  Info,
+  PackageCheck,
+  RotateCcw,
+  TriangleAlert,
+  type LucideIcon,
+} from 'lucide-react'
+import {
+  useMarkNotificationRead,
+  useNotifications,
+  useUnreadNotificationCount,
+} from '@/hooks/useNotifications'
+import {
+  getNotificationHref,
+  getNotificationTitle,
+} from '@/lib/notificationPresentation'
 import type { Notification, NotificationType } from '@/lib/types'
 
-const TYPE_CONFIG: Record<NotificationType, { icon: React.ElementType; iconClass: string; bgClass: string }> = {
+interface NotificationTypeConfig {
+  icon: LucideIcon
+  iconClass: string
+  bgClass: string
+}
+
+const TYPE_CONFIG: Record<NotificationType, NotificationTypeConfig> = {
   REMOVAL_DUE: {
     icon: Clock,
     iconClass: 'text-orange-600',
     bgClass: 'bg-orange-50',
   },
-  OVERDUE: {
-    icon: AlertTriangle,
-    iconClass: 'text-red-600',
-    bgClass: 'bg-red-50',
-  },
-  INFO: {
-    icon: Info,
+  BORROW_REQUESTED: {
+    icon: Handshake,
     iconClass: 'text-blue-600',
     bgClass: 'bg-blue-50',
   },
+  BORROW_APPROVED: {
+    icon: CheckCircle2,
+    iconClass: 'text-green-600',
+    bgClass: 'bg-green-50',
+  },
+  BORROW_REJECTED: {
+    icon: CircleX,
+    iconClass: 'text-red-600',
+    bgClass: 'bg-red-50',
+  },
+  BORROW_ACTIVATED: {
+    icon: PackageCheck,
+    iconClass: 'text-violet-600',
+    bgClass: 'bg-violet-50',
+  },
+  BORROW_OVERDUE: {
+    icon: TriangleAlert,
+    iconClass: 'text-orange-700',
+    bgClass: 'bg-orange-50',
+  },
+  BORROW_RETURNED: {
+    icon: RotateCcw,
+    iconClass: 'text-teal-600',
+    bgClass: 'bg-teal-50',
+  },
+  DISCREPANCY_REPORTED: {
+    icon: TriangleAlert,
+    iconClass: 'text-amber-700',
+    bgClass: 'bg-amber-50',
+  },
+  DISCREPANCY_RESOLVED: {
+    icon: ClipboardCheck,
+    iconClass: 'text-emerald-700',
+    bgClass: 'bg-emerald-50',
+  },
+  WORKORDER_ASSIGNED: {
+    icon: ClipboardCheck,
+    iconClass: 'text-violet-600',
+    bgClass: 'bg-violet-50',
+  },
 }
 
-function NotificationItem({ notif }: { notif: Notification }) {
-  const config = TYPE_CONFIG[notif.type]
+const FALLBACK_CONFIG: NotificationTypeConfig = {
+  icon: Info,
+  iconClass: 'text-gray-600',
+  bgClass: 'bg-gray-100',
+}
+
+const SKELETON_IDS = ['notification-1', 'notification-2', 'notification-3', 'notification-4']
+
+function notificationTypeConfig(type: string): NotificationTypeConfig {
+  return TYPE_CONFIG[type as NotificationType] ?? FALLBACK_CONFIG
+}
+
+function formatNotificationDate(createdAt: string): string {
+  const date = new Date(createdAt)
+  if (Number.isNaN(date.getTime())) return 'ไม่ทราบเวลา'
+  return date.toLocaleDateString('th-TH', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+interface NotificationItemProps {
+  notification: Notification
+  isMarkingRead: boolean
+  onRead: (id: string) => void
+}
+
+function NotificationItem({ notification, isMarkingRead, onRead }: NotificationItemProps) {
+  const config = notificationTypeConfig(notification.type)
   const Icon = config.icon
+  const title = getNotificationTitle(notification.type)
+  const href = getNotificationHref(notification)
+  const isUnread = !notification.readAt
+  const className = [
+    'block w-full rounded-xl border p-4 text-left transition-colors',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pea-500 focus-visible:ring-offset-2',
+    isUnread
+      ? 'border-pea-100 bg-pea-50 hover:bg-pea-100/70'
+      : 'border-gray-100 bg-white hover:bg-gray-50',
+  ].join(' ')
+  const handleActivate = () => {
+    if (isUnread && !isMarkingRead) onRead(notification.id)
+  }
+  const content = (
+    <div className="flex items-start gap-3">
+      <span className={['flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl', config.bgClass].join(' ')}>
+        <Icon className={['h-5 w-5', config.iconClass].join(' ')} aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-start justify-between gap-2">
+          <span className={['text-sm font-medium', isUnread ? 'text-gray-900' : 'text-gray-700'].join(' ')}>
+            {title}
+          </span>
+          {isUnread && (
+            <>
+              <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-pea-600" aria-hidden />
+              <span className="sr-only">ยังไม่อ่าน</span>
+            </>
+          )}
+        </span>
+        <span className="mt-0.5 block text-sm text-gray-500">{notification.message}</span>
+        <span className="mt-1.5 block text-xs text-gray-400">
+          {formatNotificationDate(notification.createdAt)}
+        </span>
+      </span>
+    </div>
+  )
+
+  if (href) {
+    return (
+      <Link href={href} className={className} onClick={handleActivate}>
+        {content}
+      </Link>
+    )
+  }
+
+  if (!isUnread) {
+    return <article className={className}>{content}</article>
+  }
 
   return (
-    <div
-      className={[
-        'flex items-start gap-3 p-4 rounded-xl border transition-colors',
-        notif.read
-          ? 'bg-white border-gray-100'
-          : 'bg-pea-50 border-pea-100',
-      ].join(' ')}
-    >
-      <div className={['w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0', config.bgClass].join(' ')}>
-        <Icon className={['w-5 h-5', config.iconClass].join(' ')} aria-hidden />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <p className={['text-sm font-medium', notif.read ? 'text-gray-700' : 'text-gray-900'].join(' ')}>
-            {notif.title}
-          </p>
-          {!notif.read && (
-            <span className="w-2 h-2 rounded-full bg-pea-600 flex-shrink-0 mt-1.5" aria-label="ยังไม่อ่าน" />
-          )}
-        </div>
-        <p className="text-sm text-gray-500 mt-0.5">{notif.message}</p>
-        <p className="text-xs text-gray-400 mt-1.5">
-          {new Date(notif.createdAt).toLocaleDateString('th-TH', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </p>
-      </div>
-    </div>
+    <button type="button" className={className} onClick={handleActivate}>
+      {content}
+    </button>
   )
 }
 
 export default function NotificationsPage() {
-  const { data: notifications = [], isLoading, error } = useQuery({
-    queryKey: ['notifications'],
-    queryFn: async () => {
-      const res = await api.get<Notification[]>('/notifications')
-      return res.data ?? []
-    },
-  })
-
-  const unreadCount = notifications.filter((n) => !n.read).length
+  const notificationsQuery = useNotifications()
+  const unreadCountQuery = useUnreadNotificationCount()
+  const markRead = useMarkNotificationRead()
+  const notifications = notificationsQuery.data ?? []
+  const unreadCount = unreadCountQuery.data ?? 0
 
   return (
-    <div className="page-padding max-w-2xl mx-auto">
-      <div className="flex items-center gap-3 mb-5">
+    <div className="page-padding mx-auto max-w-2xl">
+      <div className="mb-5 flex items-center gap-3">
         <h1 className="text-xl font-bold text-gray-900">การแจ้งเตือน</h1>
         {unreadCount > 0 && (
-          <span className="badge bg-pea-100 text-pea-700 border-pea-200">
+          <span className="badge border-pea-200 bg-pea-100 text-pea-700">
             {unreadCount} ใหม่
           </span>
         )}
       </div>
 
-      {isLoading && (
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="card-surface p-4 h-20 animate-pulse bg-gray-100" />
+      {notificationsQuery.isLoading && (
+        <div className="space-y-3" aria-label="กำลังโหลดการแจ้งเตือน">
+          {SKELETON_IDS.map((id) => (
+            <div key={id} className="card-surface h-20 animate-pulse bg-gray-100 p-4" />
           ))}
         </div>
       )}
 
-      {error && (
-        <div role="alert" className="card-surface p-6 text-center text-red-600 text-sm">
+      {notificationsQuery.error && (
+        <div role="alert" className="card-surface p-6 text-center text-sm text-red-600">
           ไม่สามารถโหลดข้อมูลได้
         </div>
       )}
 
-      {!isLoading && !error && notifications.length === 0 && (
-        <div className="text-center py-16">
-          <Bell className="w-12 h-12 mx-auto mb-3 text-gray-300" aria-hidden />
-          <p className="text-gray-500 font-medium">ไม่มีการแจ้งเตือน</p>
-          <p className="text-gray-400 text-sm mt-1">
-            การแจ้งเตือนจะปรากฏเมื่อมีใบงานถึงกำหนด
+      {!notificationsQuery.isLoading && !notificationsQuery.error && notifications.length === 0 && (
+        <div className="py-16 text-center">
+          <Bell className="mx-auto mb-3 h-12 w-12 text-gray-300" aria-hidden />
+          <p className="font-medium text-gray-500">ไม่มีการแจ้งเตือน</p>
+          <p className="mt-1 text-sm text-gray-400">
+            ระบบจะแจ้งเมื่อมีงานถึงกำหนด คำขอยืม ข้อคลาดเคลื่อน หรือการมอบหมายใบงาน
           </p>
         </div>
       )}
 
-      {!isLoading && !error && notifications.length > 0 && (
+      {!notificationsQuery.isLoading && !notificationsQuery.error && notifications.length > 0 && (
         <div className="space-y-2">
-          {notifications.map((notif) => (
-            <NotificationItem key={notif.id} notif={notif} />
+          {notifications.map((notification) => (
+            <NotificationItem
+              key={notification.id}
+              notification={notification}
+              isMarkingRead={markRead.isPending && markRead.variables === notification.id}
+              onRead={(id) => { markRead.mutate(id) }}
+            />
           ))}
         </div>
       )}

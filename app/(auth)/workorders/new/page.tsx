@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, ArrowRight, AlertTriangle } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useCreateWorkOrder } from '@/hooks/useWorkOrders'
 import { useOfficeStock } from '@/hooks/useStock'
@@ -14,6 +15,7 @@ import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
 import { GpsPicker, type GpsCoords } from '@/components/feature/GpsPicker'
 import { ApiError } from '@/lib/api'
+import { PHASE_FEATURE_FLAGS } from '@/lib/featureFlags'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -74,6 +76,11 @@ export default function NewWorkOrderPage() {
 
   const availableForWorkOrder = stock?.availableForWorkOrder ?? stock?.inStock ?? null
   const stockWarning = availableForWorkOrder !== null && plannedQty > availableForWorkOrder
+  const stockShortfall = stockWarning && availableForWorkOrder !== null
+    ? plannedQty - availableForWorkOrder
+    : 0
+  const borrowPrefillParams = new URLSearchParams({ requestedQty: String(stockShortfall) })
+  if (removalDate) borrowPrefillParams.set('returnDate', removalDate)
 
   const onSubmit = async (data: NewWorkOrderForm) => {
     if (!user?.officeId) return
@@ -133,9 +140,20 @@ export default function NewWorkOrderPage() {
               </p>
             )}
             {stockWarning && (
-              <p className="text-xs text-orange-700 mt-0.5">
-                จำนวนที่ต้องการเกินกว่าคงเหลือหลังหักใบงานรอติดตั้ง
-              </p>
+              <div className="mt-1.5">
+                <p className="text-xs text-orange-700">
+                  จำนวนที่ต้องการเกินกว่าคงเหลือหลังหักใบงานรอติดตั้ง
+                </p>
+                {PHASE_FEATURE_FLAGS.phase2Borrowing && stockShortfall > 0 && (
+                  <Link
+                    href={`/borrows/new?${borrowPrefillParams.toString()}`}
+                    className="mt-2 inline-flex items-center gap-1 rounded-lg border border-orange-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-orange-800 hover:bg-orange-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                  >
+                    ขอยืมเพิ่ม {stockShortfall} ชิ้น
+                    <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                  </Link>
+                )}
+              </div>
             )}
           </div>
         </div>

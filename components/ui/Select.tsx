@@ -32,7 +32,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         <select
           ref={ref}
           id={selectId}
-          aria-describedby={error ? `${selectId}-error` : undefined}
+          aria-describedby={error ? `${selectId}-error` : hint ? `${selectId}-hint` : undefined}
           aria-invalid={error ? 'true' : undefined}
           className={[
             'w-full h-12 px-3 pr-10 rounded-xl border text-base appearance-none',
@@ -67,7 +67,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         <p id={`${selectId}-error`} role="alert" className="text-xs text-red-600">{error}</p>
       )}
       {hint && !error && (
-        <p className="text-xs text-gray-500">{hint}</p>
+        <p id={`${selectId}-hint`} className="text-xs text-gray-500">{hint}</p>
       )}
     </div>
   )

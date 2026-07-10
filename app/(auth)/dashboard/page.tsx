@@ -1,12 +1,21 @@
 'use client'
 
-import { AlertTriangle, CheckCircle2, Clock, Package } from 'lucide-react'
-import { useWorkOrders } from '@/hooks/useWorkOrders'
-import { useStock } from '@/hooks/useStock'
+import { useEffect } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import {
+  AlertTriangle,
+  Ban,
+  CheckCircle2,
+  Clock,
+  Package,
+  RotateCcw,
+} from 'lucide-react'
+import { useDashboardSummary } from '@/hooks/useDashboard'
+import { useAuth } from '@/lib/auth'
 import { Card } from '@/components/ui/Card'
 import { StatusBadge } from '@/components/ui/StatusBadge'
-import type { WorkOrder } from '@/lib/types'
-import { getWorkOrderDisplayStatus } from '@/lib/workOrderDisplayStatus'
+import type { DashboardSummary, WorkOrder } from '@/lib/types'
 
 interface SummaryCardProps {
   label: string
@@ -16,151 +25,193 @@ interface SummaryCardProps {
   bgClass?: string
 }
 
-function SummaryCard({ label, value, icon: Icon, iconClass = 'text-pea-600', bgClass = 'bg-pea-50' }: SummaryCardProps) {
+function SummaryCard({
+  label,
+  value,
+  icon: Icon,
+  iconClass = 'text-pea-600',
+  bgClass = 'bg-pea-50',
+}: SummaryCardProps) {
   return (
     <Card>
       <div className="flex items-center gap-3">
-        <div className={['w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0', bgClass].join(' ')}>
-          <Icon className={['w-5 h-5', iconClass].join(' ')} aria-hidden />
+        <div className={['flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl', bgClass].join(' ')}>
+          <Icon className={['h-5 w-5', iconClass].join(' ')} aria-hidden />
         </div>
         <div>
-          <p className="text-2xl font-bold text-gray-900 tabular-nums">{value}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+          <p className="text-2xl font-bold tabular-nums text-gray-900">{value}</p>
+          <p className="mt-0.5 text-xs text-gray-500">{label}</p>
         </div>
       </div>
     </Card>
   )
 }
 
-function timestamp(iso?: string): number | null {
-  if (!iso) return null
+function timestamp(iso?: string): number {
+  if (!iso) return Number.MAX_SAFE_INTEGER
   const value = new Date(iso).getTime()
-  return Number.isNaN(value) ? null : value
+  return Number.isNaN(value) ? Number.MAX_SAFE_INTEGER : value
 }
 
 function formatDate(iso?: string): string {
   const value = timestamp(iso)
-  if (value === null) return 'ยังไม่กำหนด'
+  if (value === Number.MAX_SAFE_INTEGER) return 'ยังไม่กำหนด'
   return new Date(value).toLocaleDateString('th-TH')
 }
 
-export default function DashboardPage() {
-  const { data: allOrders = [], isLoading: ordersLoading } = useWorkOrders()
-  const { data: stock = [], isLoading: stockLoading } = useStock()
+function totalStock(summary: DashboardSummary, field: 'inStock' | 'installed'): number {
+  return summary.stockByOffice.reduce((total, officeStock) => total + officeStock.stock[field], 0)
+}
 
-  const isLoading = ordersLoading || stockLoading
-
-  const pendingInstall = allOrders.filter((o) => getWorkOrderDisplayStatus(o) === 'PENDING_INSTALL').length
-  const installed = allOrders.filter((o) => getWorkOrderDisplayStatus(o) === 'INSTALLED').length
-  const dueSoonCount = allOrders.filter((o) => getWorkOrderDisplayStatus(o) === 'DUE_SOON').length
-  const dueTodayCount = allOrders.filter((o) => getWorkOrderDisplayStatus(o) === 'DUE_TODAY').length
-  const overdueCount = allOrders.filter((o) => getWorkOrderDisplayStatus(o) === 'OVERDUE').length
-
-  const totalStock = stock.reduce((s, r) => s + r.inStock, 0)
-  const totalInstalled = stock.reduce((s, r) => s + r.installed, 0)
-
-  const dueSoon: WorkOrder[] = allOrders
-    .filter((o) => getWorkOrderDisplayStatus(o) === 'DUE_SOON' || getWorkOrderDisplayStatus(o) === 'DUE_TODAY')
-    .sort((a, b) => (timestamp(a.removalDate) ?? 0) - (timestamp(b.removalDate) ?? 0))
-
-  const overdue: WorkOrder[] = allOrders
-    .filter((o) => getWorkOrderDisplayStatus(o) === 'OVERDUE')
-    .sort((a, b) => (timestamp(a.removalDate) ?? 0) - (timestamp(b.removalDate) ?? 0))
-
-  const now = Date.now()
+function DueWorkOrderList({
+  orders,
+  tone,
+}: {
+  orders: WorkOrder[]
+  tone: 'orange' | 'red'
+}) {
+  const textClass = tone === 'red' ? 'text-red-900' : 'text-orange-900'
+  const dateClass = tone === 'red' ? 'text-red-700' : 'text-orange-700'
 
   return (
-    <div className="page-padding max-w-6xl mx-auto">
+    <ul className="space-y-2">
+      {orders.map((order) => (
+        <li key={order.id}>
+          <Link
+            href={`/workorders/${encodeURIComponent(order.id)}`}
+            className="flex min-h-11 items-center justify-between rounded-lg px-2 py-1 text-sm transition-colors hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pea-500"
+          >
+            <span className={['mr-2 truncate font-medium', textClass].join(' ')}>{order.customerName}</span>
+            <span className="flex flex-shrink-0 items-center gap-2">
+              <span className={['text-xs tabular-nums', dateClass].join(' ')}>
+                {formatDate(order.removalDate)}
+              </span>
+              <StatusBadge workOrder={order} size="sm" />
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+const LOADING_CARD_IDS = [
+  'stock-in',
+  'stock-installed',
+  'scheduled',
+  'active',
+  'removal-due',
+  'removing',
+  'completed',
+  'cancelled',
+]
+
+export default function DashboardPage() {
+  const { user } = useAuth()
+  const router = useRouter()
+  const canView = user?.role === 'admin' || user?.role === 'exec'
+  const summaryQuery = useDashboardSummary(canView)
+
+  useEffect(() => {
+    if (user && !canView) router.replace('/')
+  }, [canView, router, user])
+
+  if (!canView) return null
+
+  const summary = summaryQuery.data
+  const status = summary?.workOrdersByStatus
+  const totalWorkOrders = status
+    ? Object.values(status).reduce((total, count) => total + count, 0)
+    : 0
+  const isEmpty = Boolean(
+    summary
+    && summary.stockByOffice.length === 0
+    && totalWorkOrders === 0
+    && summary.dueSoon.length === 0
+    && summary.overdueRemovals.length === 0,
+  )
+  const dueSoon = summary?.dueSoon
+    .toSorted((a, b) => timestamp(a.removalDate) - timestamp(b.removalDate)) ?? []
+  const overdue = summary?.overdueRemovals
+    .toSorted((a, b) => timestamp(a.removalDate) - timestamp(b.removalDate)) ?? []
+
+  return (
+    <div className="page-padding mx-auto max-w-6xl">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-gray-900">แดชบอร์ด</h1>
-        <p className="text-sm text-gray-500 mt-0.5">ภาพรวมการจัดการฉนวน</p>
+        <p className="mt-0.5 text-sm text-gray-500">ภาพรวมการจัดการฉนวน</p>
       </div>
 
-      {isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="card-surface p-4 h-20 animate-pulse bg-gray-100" />
+      {summaryQuery.isLoading && (
+        <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="กำลังโหลดแดชบอร์ด">
+          {LOADING_CARD_IDS.map((id) => (
+            <div key={id} className="card-surface h-20 animate-pulse bg-gray-100 p-4" />
           ))}
         </div>
-      ) : (
+      )}
+
+      {summaryQuery.error && (
+        <div role="alert" className="card-surface p-6 text-center text-sm text-red-600">
+          ไม่สามารถโหลดข้อมูลแดชบอร์ดได้ กรุณาลองใหม่
+        </div>
+      )}
+
+      {!summaryQuery.isLoading && !summaryQuery.error && isEmpty && (
+        <div className="py-16 text-center">
+          <Package className="mx-auto mb-3 h-12 w-12 text-gray-300" aria-hidden />
+          <p className="font-medium text-gray-500">ยังไม่มีข้อมูลสำหรับสรุป</p>
+          <p className="mt-1 text-sm text-gray-400">เมื่อมีสต็อกหรือใบงาน ภาพรวมจะแสดงที่นี่</p>
+        </div>
+      )}
+
+      {!summaryQuery.isLoading && !summaryQuery.error && summary && !isEmpty && (
         <>
-          {/* Stock summary */}
-          <div className="grid gap-3 sm:grid-cols-2 mb-4">
+          <div className="mb-4 grid gap-3 sm:grid-cols-2">
             <SummaryCard
               label="ฉนวนในคลัง (รวม)"
-              value={totalStock}
+              value={totalStock(summary, 'inStock')}
               icon={Package}
               iconClass="text-green-600"
               bgClass="bg-green-50"
             />
             <SummaryCard
               label="ฉนวนติดตั้งอยู่"
-              value={totalInstalled}
+              value={totalStock(summary, 'installed')}
               icon={CheckCircle2}
               iconClass="text-blue-600"
               bgClass="bg-blue-50"
             />
           </div>
 
-          {/* Work order summary */}
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
             ใบงานตามสถานะ
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
-            <SummaryCard label="รอติดตั้ง" value={pendingInstall} icon={Clock} iconClass="text-slate-600" bgClass="bg-slate-50" />
-            <SummaryCard label="ติดตั้ง" value={installed} icon={CheckCircle2} iconClass="text-green-600" bgClass="bg-green-50" />
-            <SummaryCard label="ใกล้ครบ" value={dueSoonCount} icon={Clock} iconClass="text-orange-600" bgClass="bg-orange-50" />
-            <SummaryCard label="ครบกำหนด" value={dueTodayCount} icon={AlertTriangle} iconClass="text-amber-600" bgClass="bg-amber-50" />
-            <SummaryCard label="เกินกำหนด" value={overdueCount} icon={AlertTriangle} iconClass="text-red-600" bgClass="bg-red-50" />
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <SummaryCard label="รอติดตั้ง" value={status?.SCHEDULED ?? 0} icon={Clock} iconClass="text-slate-600" bgClass="bg-slate-50" />
+            <SummaryCard label="ติดตั้ง" value={status?.ACTIVE ?? 0} icon={CheckCircle2} iconClass="text-green-600" bgClass="bg-green-50" />
+            <SummaryCard label="ครบกำหนดถอด" value={status?.REMOVAL_DUE ?? 0} icon={AlertTriangle} iconClass="text-orange-600" bgClass="bg-orange-50" />
+            <SummaryCard label="กำลังถอด" value={status?.REMOVING ?? 0} icon={RotateCcw} iconClass="text-violet-600" bgClass="bg-violet-50" />
+            <SummaryCard label="เสร็จสิ้น" value={status?.COMPLETED ?? 0} icon={CheckCircle2} iconClass="text-emerald-600" bgClass="bg-emerald-50" />
+            <SummaryCard label="ยกเลิก" value={status?.CANCELLED ?? 0} icon={Ban} iconClass="text-gray-600" bgClass="bg-gray-100" />
           </div>
 
-          {/* Overdue */}
           {overdue.length > 0 && (
-            <Card className="border-red-200 bg-red-50 mb-4">
-              <h2 className="text-sm font-semibold text-red-800 mb-3 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" aria-hidden />
+            <Card className="mb-4 border-red-200 bg-red-50">
+              <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-red-800">
+                <AlertTriangle className="h-4 w-4" aria-hidden />
                 เกินกำหนด ({overdue.length} ใบงาน)
               </h2>
-              <ul className="space-y-2">
-                {overdue.slice(0, 5).map((o) => (
-                  <li key={o.id} className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-red-900 truncate mr-2">{o.customerName}</span>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-xs text-red-700 tabular-nums">
-                        {formatDate(o.removalDate)}
-                      </span>
-                      <StatusBadge workOrder={o} size="sm" />
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              <DueWorkOrderList orders={overdue.slice(0, 5)} tone="red" />
             </Card>
           )}
 
-          {/* Due soon */}
           {dueSoon.length > 0 && (
-            <Card className="border-orange-200">
-              <h2 className="text-sm font-semibold text-orange-800 mb-3 flex items-center gap-2">
-                <Clock className="w-4 h-4" aria-hidden />
-                ใกล้ครบ/ครบกำหนด ({dueSoon.length} ใบงาน)
+            <Card className="border-orange-200 bg-orange-50">
+              <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-orange-800">
+                <Clock className="h-4 w-4" aria-hidden />
+                ใกล้ครบกำหนด ({dueSoon.length} ใบงาน)
               </h2>
-              <ul className="space-y-2">
-                {dueSoon.slice(0, 8).map((o) => {
-                  const removalTime = timestamp(o.removalDate) ?? now
-                  const daysLeft = Math.round((removalTime - now) / 86_400_000)
-                  return (
-                    <li key={o.id} className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-gray-800 truncate mr-2">{o.customerName}</span>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-xs text-orange-700 tabular-nums font-medium">
-                          {daysLeft <= 0 ? 'วันนี้' : `${daysLeft} วัน`}
-                        </span>
-                        <StatusBadge workOrder={o} size="sm" />
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
+              <DueWorkOrderList orders={dueSoon.slice(0, 8)} tone="orange" />
             </Card>
           )}
         </>

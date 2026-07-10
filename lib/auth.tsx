@@ -5,12 +5,44 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { api } from './api'
-import { clearAllTokens, getRefreshToken, setAccessToken, setRefreshToken } from './tokenStore'
-import type { LoginRequest, RefreshResponse, User } from './types'
+import { clearAllTokens, getRefreshToken, replaceSessionTokens } from './tokenStore'
+import type { ApiResponse, LoginRequest, RefreshResponse, User } from './types'
+
+// React Strict Mode intentionally replays effects in development. Reusing the
+// same startup request is mandatory because refresh tokens are single-use and
+// the backend correctly treats a duplicate rotation attempt as a replay.
+let sessionRestoreRequest: {
+  refreshToken: string
+  response: Promise<ApiResponse<RefreshResponse>>
+} | null = null
+
+function restoreSessionOnce(refreshToken: string): Promise<ApiResponse<RefreshResponse>> {
+  if (sessionRestoreRequest?.refreshToken === refreshToken) {
+    return sessionRestoreRequest.response
+  }
+
+  const response = api.post<RefreshResponse>('/auth/refresh', { refreshToken })
+  const request = { refreshToken, response }
+  sessionRestoreRequest = request
+
+  const releaseRequest = () => {
+    // Keep the settled promise through the current turn so Strict Mode's
+    // immediate effect replay can still reuse it, then allow a later mount to
+    // retry a transient failure normally.
+    window.setTimeout(() => {
+      if (sessionRestoreRequest === request) sessionRestoreRequest = null
+    }, 0)
+  }
+  void response.then(releaseRequest, releaseRequest)
+
+  return response
+}
 
 // ─── Context types ────────────────────────────────────────────────────────────
 
@@ -30,31 +62,40 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const authOperationRef = useRef(0)
+  const queryClient = useQueryClient()
   const router = useRouter()
 
   // Restore session from persisted refresh token on mount
   useEffect(() => {
     let cancelled = false
+    const restoreOperation = authOperationRef.current
+    const isCurrentRestore = () => (
+      !cancelled && authOperationRef.current === restoreOperation
+    )
 
     async function restoreSession() {
       const refreshToken = getRefreshToken()
       if (!refreshToken) {
-        setIsLoading(false)
+        if (isCurrentRestore()) setIsLoading(false)
         return
       }
       try {
-        const res = await api.post<RefreshResponse>('/auth/refresh', { refreshToken })
-        if (!cancelled && res.data) {
-          setAccessToken(res.data.accessToken)
-          if (res.data.refreshToken) {
-            setRefreshToken(res.data.refreshToken)
-          }
+        const res = await restoreSessionOnce(refreshToken)
+        if (isCurrentRestore() && res.data) {
+          replaceSessionTokens(res.data.accessToken, res.data.refreshToken)
           setUser(res.data.user)
         }
       } catch {
-        clearAllTokens()
+        // A manual login can finish while this startup refresh is still in
+        // flight. Only the operation that owns the current session may clear
+        // it; otherwise a stale failure would erase the newly issued tokens.
+        if (isCurrentRestore()) {
+          clearAllTokens()
+          setUser(null)
+        }
       } finally {
-        if (!cancelled) setIsLoading(false)
+        if (isCurrentRestore()) setIsLoading(false)
       }
     }
 
@@ -65,36 +106,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Listen for forced logout events emitted by api.ts when refresh fails
   useEffect(() => {
     const handleForcedLogout = () => {
+      queryClient.clear()
       setUser(null)
       clearAllTokens()
       router.replace('/login')
     }
     window.addEventListener('auth:logout', handleForcedLogout)
     return () => window.removeEventListener('auth:logout', handleForcedLogout)
-  }, [router])
+  }, [queryClient, router])
 
   const login = useCallback(async (creds: LoginRequest) => {
-    const res = await api.post<{ accessToken: string; refreshToken: string; user: User }>(
-      '/auth/login',
-      creds,
-    )
-    if (!res.data) throw new Error('Login failed: empty response')
-    setAccessToken(res.data.accessToken)
-    setRefreshToken(res.data.refreshToken)
-    setUser(res.data.user)
-  }, [])
+    // Supersede any startup restore before awaiting the login response. This
+    // prevents a delayed refresh result from overwriting the explicit login.
+    const loginOperation = ++authOperationRef.current
+    try {
+      const res = await api.post<{ accessToken: string; refreshToken: string; user: User }>(
+        '/auth/login',
+        creds,
+      )
+      if (!res.data) throw new Error('Login failed: empty response')
+      if (authOperationRef.current !== loginOperation) return
+      // React Query keys are intentionally domain-oriented and do not embed a
+      // user id. Clear the previous identity's server state before exposing a
+      // new session so cached office/role data can never flash across users.
+      queryClient.clear()
+      replaceSessionTokens(res.data.accessToken, res.data.refreshToken)
+      setUser(res.data.user)
+    } finally {
+      if (authOperationRef.current === loginOperation) setIsLoading(false)
+    }
+  }, [queryClient])
 
   const logout = useCallback(async () => {
+    const refreshToken = getRefreshToken()
+    // Start revocation while the current access token is still available for
+    // the request headers, then end the local session immediately. Logout must
+    // not leave sensitive screens/cache visible while the network is slow.
+    const revokeRequest = api.post(
+      '/auth/logout',
+      refreshToken ? { refreshToken } : undefined,
+    )
+    ++authOperationRef.current
+    queryClient.clear()
+    setUser(null)
+    clearAllTokens()
+    router.replace('/login')
+
     try {
-      await api.post('/auth/logout')
+      await revokeRequest
     } catch {
-      // Swallow — we clear local state regardless
-    } finally {
-      setUser(null)
-      clearAllTokens()
-      router.replace('/login')
+      // Swallow — the local session has already ended regardless.
     }
-  }, [router])
+  }, [queryClient, router])
 
   return (
     <AuthContext.Provider value={{ user, isLoading, login, logout }}>

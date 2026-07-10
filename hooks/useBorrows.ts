@@ -1,11 +1,28 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { Borrow, BorrowQueryParams, CreateBorrowRequest } from '@/lib/types'
+import {
+  invalidateOperationalQueries,
+  OPERATIONAL_QUERY_FRESHNESS,
+} from '@/lib/queryPolicy'
+import type {
+  Borrow,
+  BorrowAvailability,
+  BorrowQueryParams,
+  CreateBorrowRequest,
+} from '@/lib/types'
+import type { BorrowAction } from '@/lib/borrowPresentation'
 
 const KEYS = {
   all: ['borrows'] as const,
+  lists: ['borrows', 'list'] as const,
   list: (params?: BorrowQueryParams) => [...KEYS.all, 'list', params] as const,
   detail: (id: string) => [...KEYS.all, 'detail', id] as const,
+  availability: ['borrows', 'availability'] as const,
+}
+
+function requireBorrow(data: Borrow | null): Borrow {
+  if (!data) throw new Error('Borrow API returned an empty response')
+  return data
 }
 
 export function useBorrows(params?: BorrowQueryParams) {
@@ -30,23 +47,63 @@ export function useBorrow(id: string) {
   })
 }
 
+export function useBorrowAvailability(enabled = true) {
+  return useQuery({
+    ...OPERATIONAL_QUERY_FRESHNESS,
+    queryKey: KEYS.availability,
+    queryFn: async () => {
+      const res = await api.get<BorrowAvailability[]>('/borrows/availability')
+      return res.data ?? []
+    },
+    enabled,
+  })
+}
+
 export function useCreateBorrow() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: CreateBorrowRequest) => api.post<Borrow>('/borrows', payload),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: KEYS.all })
+    mutationFn: async (payload: CreateBorrowRequest) => {
+      const res = await api.post<Borrow>('/borrows', payload)
+      return requireBorrow(res.data)
+    },
+    onSuccess: async (borrow) => {
+      qc.setQueryData(KEYS.detail(borrow.id), borrow)
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: KEYS.lists }),
+        invalidateOperationalQueries(qc),
+      ])
     },
   })
 }
 
-export function useBorrowAction(action: 'approve' | 'reject' | 'cancel' | 'activate' | 'return') {
+export interface BorrowActionVariables {
+  id: string
+  reason?: string
+}
+
+export function useBorrowAction(action: BorrowAction) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => api.post<Borrow>(`/borrows/${id}/${action}`),
-    onSuccess: (_data, id) => {
-      void qc.invalidateQueries({ queryKey: KEYS.detail(id) })
-      void qc.invalidateQueries({ queryKey: KEYS.all })
+    mutationFn: async ({ id, reason }: BorrowActionVariables) => {
+      const normalizedReason = reason?.trim()
+      if (action === 'reject' && !normalizedReason) {
+        throw new Error('Borrow rejection reason is required')
+      }
+      const res = await api.post<Borrow>(
+        `/borrows/${id}/${action}`,
+        normalizedReason ? { reason: normalizedReason } : undefined,
+      )
+      return requireBorrow(res.data)
+    },
+    onSuccess: async (borrow) => {
+      qc.setQueryData(KEYS.detail(borrow.id), borrow)
+      qc.setQueriesData<Borrow[]>({ queryKey: KEYS.lists }, (current) => (
+        current?.map((item) => item.id === borrow.id ? borrow : item)
+      ))
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: KEYS.lists }),
+        invalidateOperationalQueries(qc),
+      ])
     },
   })
 }

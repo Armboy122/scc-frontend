@@ -17,6 +17,9 @@ const STATUS_FILTERS: { label: string; value: WorkOrderDisplayStatus | 'ALL' }[]
   { label: 'ใกล้ครบ', value: 'DUE_SOON' },
   { label: 'ครบกำหนด', value: 'DUE_TODAY' },
   { label: 'เกินกำหนด', value: 'OVERDUE' },
+  { label: 'กำลังถอด', value: 'REMOVING' },
+  { label: 'เสร็จสิ้น', value: 'COMPLETED' },
+  { label: 'ยกเลิก', value: 'CANCELLED' },
 ]
 
 const URGENT_STATUSES: WorkOrderDisplayStatus[] = ['OVERDUE', 'DUE_TODAY', 'PENDING_INSTALL']
@@ -27,8 +30,10 @@ function statusPriority(order: WorkOrder): number {
   if (status === 'DUE_TODAY') return 1
   if (status === 'PENDING_INSTALL') return 2
   if (status === 'DUE_SOON') return 3
-  if (status === 'INSTALLED') return 4
-  return 5
+  if (status === 'REMOVING') return 4
+  if (status === 'INSTALLED') return 5
+  if (status === 'COMPLETED') return 6
+  return 7
 }
 
 function timestamp(iso?: string): number {
@@ -48,7 +53,7 @@ export default function WorkOrdersPage() {
   const router = useRouter()
   const [statusFilter, setStatusFilter] = useState<WorkOrderDisplayStatus | 'ALL'>('ALL')
 
-  const params = user?.role === 'tech' ? { assignedTo: user.id } : undefined
+  const params = user?.role === 'tech' ? { mine: true } : undefined
   const { data: allOrders = [], isLoading, error } = useWorkOrders(params)
   const filterCounts = useMemo(() => {
     const counts: Record<WorkOrderDisplayStatus | 'ALL', number> = {
@@ -58,7 +63,9 @@ export default function WorkOrdersPage() {
       DUE_SOON: 0,
       DUE_TODAY: 0,
       OVERDUE: 0,
+      REMOVING: 0,
       COMPLETED: 0,
+      CANCELLED: 0,
     }
     allOrders.forEach((order) => {
       counts[getWorkOrderDisplayStatus(order)] += 1

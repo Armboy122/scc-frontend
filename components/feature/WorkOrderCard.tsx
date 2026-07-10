@@ -39,7 +39,7 @@ export function WorkOrderCard({ order }: WorkOrderCardProps) {
   const rentalDays = daysBetween(order.installDate, order.removalDate)
   const displayStatus = getWorkOrderDisplayStatus(order)
   const isTech = user?.role === 'tech'
-  const canStartInstall = isTech && (order.status === 'SCHEDULED' || order.status === 'INSTALLING')
+  const canStartInstall = isTech && order.status === 'SCHEDULED'
   const canStartRemoval = isTech && (displayStatus === 'DUE_TODAY' || displayStatus === 'OVERDUE' || order.status === 'REMOVING') && order.status !== 'COMPLETED'
   const mapsHref = order.latitude && order.longitude
     ? `https://maps.google.com/?q=${order.latitude},${order.longitude}`

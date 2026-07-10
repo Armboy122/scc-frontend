@@ -33,8 +33,6 @@
   /* Status — each has a solid and a background tint */
   --status-scheduled:        #64748b;
   --status-scheduled-bg:     #f1f5f9;
-  --status-installing:       #2563eb;
-  --status-installing-bg:    #eff6ff;
   --status-active:           #16a34a;
   --status-active-bg:        #f0fdf4;
   --status-removal-due:      #ea580c;

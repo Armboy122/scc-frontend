@@ -8,6 +8,7 @@ import {
   MapPin,
   Package,
   Phone,
+  UserRound,
   Wrench,
   XCircle,
 } from 'lucide-react'
@@ -16,6 +17,7 @@ import { useAuth } from '@/lib/auth'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { WorkOrderAssignmentCard } from '@/components/feature/WorkOrderAssignmentCard'
 import type { WorkOrder } from '@/lib/types'
 
 function formatDate(iso?: string) {
@@ -124,17 +126,6 @@ function ActionButtons({ order }: { order: WorkOrder }) {
         </>
       )}
 
-      {order.status === 'INSTALLING' && (
-        <Button
-          size="xl"
-          fullWidth
-          leftIcon={<Wrench className="w-5 h-5" />}
-          onClick={() => router.push(`/workorders/${order.id}/install`)}
-        >
-          ดำเนินการติดตั้ง
-        </Button>
-      )}
-
       {(order.status === 'ACTIVE' || order.status === 'REMOVAL_DUE') && isTech && (
         <Button
           size="xl"
@@ -173,6 +164,7 @@ export default function WorkOrderDetailPage({
 }) {
   const { id } = use(params)
   const router = useRouter()
+  const { user } = useAuth()
   const { data: order, isLoading, error } = useWorkOrder(id)
 
   if (isLoading) {
@@ -246,6 +238,15 @@ export default function WorkOrderDetailPage({
           {order.office && (
             <InfoRow icon={Package} label="สำนักงาน" value={order.office.name} />
           )}
+          <InfoRow
+            icon={UserRound}
+            label="ผู้รับผิดชอบ"
+            value={
+              user && order.assignedToId === user.id
+                ? `${user.name} (คุณ)`
+                : order.assignedUser?.name ?? order.assignedToId ?? 'ยังไม่มอบหมาย'
+            }
+          />
           {order.latitude && order.longitude && (
             <InfoRow
               icon={MapPin}
@@ -271,6 +272,8 @@ export default function WorkOrderDetailPage({
         )}
       </Card>
 
+      <WorkOrderAssignmentCard order={order} />
+
       {/* Installed covers */}
       {order.installations && order.installations.length > 0 && (
         <Card>
@@ -286,7 +289,7 @@ export default function WorkOrderDetailPage({
                 <span className="w-5 h-5 rounded-full bg-pea-100 text-pea-700 text-xs font-bold flex items-center justify-center flex-shrink-0">
                   {i + 1}
                 </span>
-                <span className="font-mono">{inst.cover?.assetCode ?? inst.coverId}</span>
+                <span className="font-mono">{inst.coverId}</span>
               </li>
             ))}
           </ul>
