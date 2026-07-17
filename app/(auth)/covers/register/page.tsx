@@ -20,7 +20,6 @@ import type { Cover } from '@/lib/types'
 
 const schema = z.object({
   assetCode: z.string().min(1, 'กรุณากรอกรหัสทรัพย์สิน'),
-  nfcId: z.string().optional(),
   ownerOfficeId: z.string().min(1, 'กรุณากรอกรหัสสำนักงาน'),
 })
 
@@ -70,7 +69,6 @@ export default function RegisterCoverPage() {
         setCreatedCover(res.data)
         reset({
           assetCode: '',
-          nfcId: '',
           ownerOfficeId: payload.ownerOfficeId,
         })
       }
@@ -105,6 +103,10 @@ export default function RegisterCoverPage() {
             unoptimized
             className="mx-auto w-56 h-auto"
           />
+          <div className="mt-3 rounded-lg border border-pea-200 bg-pea-50 px-3 py-2 text-left">
+            <p className="text-xs font-semibold text-pea-800">เขียนข้อมูลนี้ลง NFC tag</p>
+            <p className="mt-1 font-mono text-sm font-bold text-pea-900">{createdCover.assetCode}</p>
+          </div>
           <div className="mt-3 flex gap-2">
             <Button
               type="button"
@@ -129,6 +131,10 @@ export default function RegisterCoverPage() {
 
       <Card>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+          <div className="rounded-xl border border-pea-200 bg-pea-50 px-4 py-3 text-sm text-pea-900">
+            <p className="font-semibold">ใช้รหัสเดียวสำหรับ NFC</p>
+            <p className="mt-1 text-pea-800">หลังลงทะเบียน ให้นำ Asset Code นี้ไปเขียนเป็นข้อความลง NFC tag ด้วยมือถือ Android</p>
+          </div>
           <Input
             label="รหัสทรัพย์สิน (Asset Code)"
             placeholder="PEA-XXXX-XXXX"
@@ -141,13 +147,6 @@ export default function RegisterCoverPage() {
             label="QR Code ที่ระบบจะสร้าง"
             value={buildQrCode(ownerOfficeId, assetCode)}
             readOnly
-          />
-
-          <Input
-            label="NFC ID (ถ้ามี)"
-            placeholder="รหัส NFC"
-            error={errors.nfcId?.message}
-            {...register('nfcId')}
           />
 
           {isAdmin ? (

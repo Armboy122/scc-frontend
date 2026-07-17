@@ -16,7 +16,6 @@ import type { Cover, RegisterCoverRequest } from '@/lib/types'
 interface RowData {
   id: string
   assetCode: string
-  nfcId: string
 }
 
 interface RowError {
@@ -24,7 +23,7 @@ interface RowError {
 }
 
 function createRow(): RowData {
-  return { id: crypto.randomUUID(), assetCode: '', nfcId: '' }
+  return { id: crypto.randomUUID(), assetCode: '' }
 }
 
 function buildQrCode(ownerOfficeId: string, assetCode: string): string {
@@ -97,7 +96,6 @@ export default function BatchRegisterPage() {
 
     const items: RegisterCoverRequest[] = rows.map((r) => ({
       assetCode: r.assetCode.trim(),
-      nfcId: r.nfcId.trim() || undefined,
       ownerOfficeId: officeId.trim(),
     }))
 
@@ -181,6 +179,10 @@ export default function BatchRegisterPage() {
       )}
 
       {/* Rows table */}
+      <div className="mb-4 rounded-xl border border-pea-200 bg-pea-50 px-4 py-3 text-sm text-pea-900">
+        <p className="font-semibold">NFC ใช้ Asset Code เดียวกัน</p>
+        <p className="mt-1 text-pea-800">หลังลงทะเบียน ให้เขียน Asset Code ของแต่ละแถวเป็นข้อความลง NFC tag จึงไม่ต้องกรอก NFC ID แยก</p>
+      </div>
       <Card padding="none" className="overflow-hidden mb-4">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -189,7 +191,6 @@ export default function BatchRegisterPage() {
                 <th className="text-left px-3 py-3 font-semibold text-gray-700 w-10">#</th>
                 <th className="text-left px-3 py-3 font-semibold text-gray-700">รหัสทรัพย์สิน *</th>
                 <th className="text-left px-3 py-3 font-semibold text-gray-700">QR Code</th>
-                <th className="text-left px-3 py-3 font-semibold text-gray-700">NFC ID</th>
                 <th className="w-12" />
               </tr>
             </thead>
@@ -218,14 +219,6 @@ export default function BatchRegisterPage() {
                       <div className="min-h-9 px-2 py-2 rounded-lg bg-gray-50 border border-gray-200 font-mono text-xs text-gray-600 break-all">
                         {buildQrCode(officeId, row.assetCode)}
                       </div>
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        value={row.nfcId}
-                        onChange={(e) => updateRow(row.id, 'nfcId', e.target.value)}
-                        placeholder="(ไม่บังคับ)"
-                        className="w-full h-9 px-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-pea-400"
-                      />
                     </td>
                     <td className="px-2 py-2">
                       <button
