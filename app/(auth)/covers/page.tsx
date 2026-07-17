@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, Shield } from 'lucide-react'
+import { PenLine, Plus, Search, Shield } from 'lucide-react'
 import { useCovers } from '@/hooks/useCovers'
 import { useAuth } from '@/lib/auth'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -49,14 +49,10 @@ export default function CoversPage() {
           <p className="text-sm text-gray-500 mt-0.5">จัดการทะเบียนฉนวนครอบสายไฟ</p>
         </div>
         {canRegister && (
-          <Button
-            size="md"
-            leftIcon={<Plus className="w-4 h-4" />}
-            onClick={() => router.push('/covers/register')}
-            className="w-full sm:w-auto"
-          >
-            ลงทะเบียน
-          </Button>
+          <div className="flex w-full gap-2 sm:w-auto">
+            <Button size="md" variant="outline" leftIcon={<PenLine className="w-4 h-4" />} onClick={() => router.push('/covers/write-nfc')} className="flex-1 sm:flex-none">เขียน NFC</Button>
+            <Button size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push('/covers/register')} className="flex-1 sm:flex-none">ลงทะเบียน</Button>
+          </div>
         )}
       </div>
 

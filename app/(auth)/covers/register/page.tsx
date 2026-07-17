@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Select } from '@/components/ui/Select'
 import { ApiError } from '@/lib/api'
+import { readNdefText, type NdefRecord } from '@/lib/nfc'
 import { createCoverLabelSvg, downloadSvg, svgToDataUrl } from '@/lib/qr'
 import type { Cover } from '@/lib/types'
 
@@ -25,21 +26,9 @@ const schema = z.object({
 
 type RegisterForm = z.infer<typeof schema>
 
-type NdefRecord = { recordType: string; data?: DataView | null }
 type NdefReader = {
   scan: () => Promise<void>
   onreading: ((event: { message: { records: NdefRecord[] } }) => void) | null
-}
-
-function readNdefText(record: NdefRecord): string | null {
-  if (!record.data) return null
-  const bytes = new Uint8Array(record.data.buffer, record.data.byteOffset, record.data.byteLength)
-  if (record.recordType === 'text') {
-    const languageLength = bytes[0] & 0x3f
-    const encoding = bytes[0] & 0x80 ? 'utf-16' : 'utf-8'
-    return new TextDecoder(encoding).decode(bytes.slice(languageLength + 1)).trim()
-  }
-  return new TextDecoder().decode(bytes).trim()
 }
 
 function buildQrCode(ownerOfficeId: string, assetCode: string): string {
@@ -95,7 +84,7 @@ export default function RegisterCoverPage() {
       reader.onreading = ({ message }) => {
         const code = message.records.map(readNdefText).find(Boolean)
         if (!code) {
-          setNfcError('ไม่พบข้อความรหัสทรัพย์สินใน NFC tag นี้')
+          setNfcError('ไม่พบข้อความรหัสทรัพย์สิน')
         } else {
           setValue('assetCode', code, { shouldDirty: true, shouldValidate: true })
         }
