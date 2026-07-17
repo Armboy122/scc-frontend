@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { LogOut, Shield, User as UserIcon, Building2, AtSign, KeyRound } from 'lucide-react'
+import { AlertCircle, AtSign, Building2, CheckCircle2, Eye, EyeOff, KeyRound, LockKeyhole, LogOut, Shield, User as UserIcon } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { api } from '@/lib/api'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import type { Role } from '@/lib/types'
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -44,19 +45,24 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [message, setMessage] = useState('')
+  const [messageTone, setMessageTone] = useState<'error' | 'success'>('error')
   const [saving, setSaving] = useState(false)
+  const [showPasswords, setShowPasswords] = useState(false)
 
   if (!user) return null
 
   async function changePassword(event: React.FormEvent) {
     event.preventDefault()
-    if (newPassword.length < 8) return setMessage('รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร')
-    if (newPassword !== confirmPassword) return setMessage('ยืนยันรหัสผ่านใหม่ไม่ตรงกัน')
-    setSaving(true); setMessage('')
+    if (newPassword.length < 8) { setMessageTone('error'); return setMessage('รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร') }
+    if (newPassword !== confirmPassword) { setMessageTone('error'); return setMessage('ยืนยันรหัสผ่านใหม่ไม่ตรงกัน') }
+    setSaving(true); setMessage(''); setMessageTone('error')
     try {
       await api.post('/auth/change-password', { currentPassword, newPassword })
+      setMessageTone('success')
+      setMessage('บันทึกรหัสผ่านใหม่แล้ว กำลังออกจากระบบเพื่อให้คุณเข้าสู่ระบบอีกครั้ง')
       await logout()
     } catch (error) {
+      setMessageTone('error')
       setMessage(error instanceof Error ? error.message : 'เปลี่ยนรหัสผ่านไม่สำเร็จ')
     } finally { setSaving(false) }
   }
@@ -81,14 +87,23 @@ export default function ProfilePage() {
         </span>
       </Card>
 
-      <Card className="mb-4">
-        <CardHeader title="เปลี่ยนรหัสผ่าน" />
-        <form className="space-y-3" onSubmit={changePassword}>
-          <input className="input" type="password" required autoComplete="current-password" placeholder="รหัสผ่านปัจจุบัน" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
-          <input className="input" type="password" required minLength={8} autoComplete="new-password" placeholder="รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-          <input className="input" type="password" required minLength={8} autoComplete="new-password" placeholder="ยืนยันรหัสผ่านใหม่" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-          {message && <p className="text-sm text-red-700">{message}</p>}
-          <Button type="submit" loading={saving} fullWidth leftIcon={<KeyRound className="w-4 h-4" />}>เปลี่ยนรหัสผ่าน</Button>
+      <Card className="mb-4 overflow-hidden border border-pea-100" padding="lg">
+        <div className="-mx-6 -mt-6 mb-5 border-b border-pea-100 bg-gradient-to-br from-pea-50 via-white to-amber-50 px-6 py-5">
+          <div className="flex items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pea-700 text-white shadow-sm"><LockKeyhole className="h-5 w-5" /></span>
+            <div><h2 className="text-base font-bold text-gray-900">ความปลอดภัยบัญชี</h2><p className="mt-1 text-sm leading-5 text-gray-600">ตั้งรหัสผ่านใหม่เพื่อปกป้องบัญชีของคุณ</p></div>
+          </div>
+        </div>
+        <form className="space-y-4" onSubmit={changePassword}>
+          <Input label="รหัสผ่านปัจจุบัน" type={showPasswords ? 'text' : 'password'} required autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+          <Input label="รหัสผ่านใหม่" type={showPasswords ? 'text' : 'password'} required minLength={8} autoComplete="new-password" hint="อย่างน้อย 8 ตัวอักษร" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+          <Input label="ยืนยันรหัสผ่านใหม่" type={showPasswords ? 'text' : 'password'} required minLength={8} autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+          <button type="button" onClick={() => setShowPasswords((visible) => !visible)} className="flex items-center gap-2 text-sm font-medium text-pea-700 hover:text-pea-900">
+            {showPasswords ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}{showPasswords ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+          </button>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">หลังบันทึก ระบบจะออกจากทุกอุปกรณ์ และให้เข้าสู่ระบบด้วยรหัสใหม่</div>
+          {message && <div role="alert" className={['flex gap-2 rounded-xl px-3 py-2.5 text-sm', messageTone === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'].join(' ')}>{messageTone === 'success' ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />}{message}</div>}
+          <Button type="submit" size="lg" loading={saving} fullWidth leftIcon={<KeyRound className="w-4 h-4" />}>บันทึกรหัสผ่านใหม่</Button>
         </form>
       </Card>
 
