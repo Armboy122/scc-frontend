@@ -180,8 +180,8 @@ export default function BatchRegisterPage() {
 
       {/* Rows table */}
       <div className="mb-4 rounded-xl border border-pea-200 bg-pea-50 px-4 py-3 text-sm text-pea-900">
-        <p className="font-semibold">NFC ใช้ Asset Code เดียวกัน</p>
-        <p className="mt-1 text-pea-800">หลังลงทะเบียน ให้เขียน Asset Code ของแต่ละแถวเป็นข้อความลง NFC tag จึงไม่ต้องกรอก NFC ID แยก</p>
+        <p className="font-semibold">NFC ถูกเขียนรหัสทรัพย์สินไว้ล่วงหน้า</p>
+        <p className="mt-1 text-pea-800">อ่านหรือกรอกรหัสจาก NFC tag เช่น PEA0000000001 ในแต่ละแถว แล้วลงทะเบียนเพื่อผูกเข้ากับสำนักงาน/คลังนี้</p>
       </div>
       <Card padding="none" className="overflow-hidden mb-4">
         <div className="overflow-x-auto">

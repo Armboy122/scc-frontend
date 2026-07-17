@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft, Download, Plus } from 'lucide-react'
+import { ArrowLeft, Download, LoaderCircle, Plus, Radio } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useRegisterCover } from '@/hooks/useCovers'
 import { useOffices } from '@/hooks/useOffices'
@@ -25,6 +25,23 @@ const schema = z.object({
 
 type RegisterForm = z.infer<typeof schema>
 
+type NdefRecord = { recordType: string; data?: DataView | null }
+type NdefReader = {
+  scan: () => Promise<void>
+  onreading: ((event: { message: { records: NdefRecord[] } }) => void) | null
+}
+
+function readNdefText(record: NdefRecord): string | null {
+  if (!record.data) return null
+  const bytes = new Uint8Array(record.data.buffer, record.data.byteOffset, record.data.byteLength)
+  if (record.recordType === 'text') {
+    const languageLength = bytes[0] & 0x3f
+    const encoding = bytes[0] & 0x80 ? 'utf-16' : 'utf-8'
+    return new TextDecoder(encoding).decode(bytes.slice(languageLength + 1)).trim()
+  }
+  return new TextDecoder().decode(bytes).trim()
+}
+
 function buildQrCode(ownerOfficeId: string, assetCode: string): string {
   if (!ownerOfficeId.trim() || !assetCode.trim()) return 'ระบบจะสร้างหลังกรอกรหัสทรัพย์สินและสำนักงาน'
   return `SCC:${ownerOfficeId.trim()}:${assetCode.trim()}`
@@ -37,6 +54,9 @@ export default function RegisterCoverPage() {
   const isAdmin = user?.role === 'admin'
   const { data: offices = [], isLoading: isLoadingOffices } = useOffices(isAdmin)
   const [createdCover, setCreatedCover] = useState<Cover | null>(null)
+  const [isNfcSupported, setIsNfcSupported] = useState(false)
+  const [isScanningNfc, setIsScanningNfc] = useState(false)
+  const [nfcError, setNfcError] = useState('')
 
   const {
     register,
@@ -57,6 +77,36 @@ export default function RegisterCoverPage() {
       setValue('ownerOfficeId', user.officeId)
     }
   }, [isAdmin, setValue, user?.officeId])
+
+  useEffect(() => {
+    setIsNfcSupported(typeof (window as unknown as { NDEFReader?: unknown }).NDEFReader === 'function')
+  }, [])
+
+  const scanNfc = async () => {
+    const Reader = (window as unknown as { NDEFReader?: new () => NdefReader }).NDEFReader
+    if (!Reader) {
+      setNfcError('อุปกรณ์นี้ยังอ่าน NFC ผ่านเว็บไม่ได้ กรุณาใช้ Chrome บน Android หรือกรอกรหัสจาก tag เอง')
+      return
+    }
+    setNfcError('')
+    setIsScanningNfc(true)
+    try {
+      const reader = new Reader()
+      reader.onreading = ({ message }) => {
+        const code = message.records.map(readNdefText).find(Boolean)
+        if (!code) {
+          setNfcError('ไม่พบข้อความรหัสทรัพย์สินใน NFC tag นี้')
+        } else {
+          setValue('assetCode', code, { shouldDirty: true, shouldValidate: true })
+        }
+        setIsScanningNfc(false)
+      }
+      await reader.scan()
+    } catch {
+      setIsScanningNfc(false)
+      setNfcError('ไม่สามารถเริ่มอ่าน NFC ได้ กรุณาอนุญาต NFC แล้วลองใหม่')
+    }
+  }
 
   const onSubmit = async (data: RegisterForm) => {
     try {
@@ -89,7 +139,7 @@ export default function RegisterCoverPage() {
         </button>
         <div>
           <h1 className="text-xl font-bold text-gray-900">ลงทะเบียนฉนวน</h1>
-          <p className="text-sm text-gray-500">เพิ่มฉนวนใหม่เข้าระบบ</p>
+          <p className="text-sm text-gray-500">ผูก NFC tag เข้ากับสำนักงานและคลัง</p>
         </div>
       </div>
 
@@ -103,10 +153,7 @@ export default function RegisterCoverPage() {
             unoptimized
             className="mx-auto w-56 h-auto"
           />
-          <div className="mt-3 rounded-lg border border-pea-200 bg-pea-50 px-3 py-2 text-left">
-            <p className="text-xs font-semibold text-pea-800">เขียนข้อมูลนี้ลง NFC tag</p>
-            <p className="mt-1 font-mono text-sm font-bold text-pea-900">{createdCover.assetCode}</p>
-          </div>
+          <p className="mt-3 text-sm font-medium text-green-700">ผูก NFC {createdCover.assetCode} เข้าคลังเรียบร้อย</p>
           <div className="mt-3 flex gap-2">
             <Button
               type="button"
@@ -132,16 +179,28 @@ export default function RegisterCoverPage() {
       <Card>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="rounded-xl border border-pea-200 bg-pea-50 px-4 py-3 text-sm text-pea-900">
-            <p className="font-semibold">ใช้รหัสเดียวสำหรับ NFC</p>
-            <p className="mt-1 text-pea-800">หลังลงทะเบียน ให้นำ Asset Code นี้ไปเขียนเป็นข้อความลง NFC tag ด้วยมือถือ Android</p>
+            <p className="font-semibold">แตะ NFC เพื่อเพิ่มฉนวน</p>
+            <p className="mt-1 text-pea-800">NFC tag ถูกเขียนรหัสทรัพย์สินไว้แล้ว เช่น PEA0000000001 ระบบจะอ่านรหัสนี้แล้วผูกเข้ากับสำนักงาน/คลังที่เลือก</p>
           </div>
-          <Input
-            label="รหัสทรัพย์สิน (Asset Code)"
-            placeholder="PEA-XXXX-XXXX"
-            required
-            error={errors.assetCode?.message}
-            {...register('assetCode')}
-          />
+          <div className="space-y-2">
+            <div className="flex items-end gap-2">
+              <div className="min-w-0 flex-1">
+                <Input
+                  label="รหัสจาก NFC / รหัสทรัพย์สิน"
+                  placeholder="PEA0000000001"
+                  required
+                  error={errors.assetCode?.message}
+                  hint="กรอกรหัสจาก tag ได้ หากอุปกรณ์ไม่รองรับ NFC"
+                  {...register('assetCode')}
+                />
+              </div>
+              <Button type="button" variant="outline" className="mb-5 shrink-0" onClick={() => void scanNfc()} disabled={isScanningNfc} leftIcon={isScanningNfc ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Radio className="h-4 w-4" />}>
+                {isScanningNfc ? 'กำลังแตะ…' : 'อ่าน NFC'}
+              </Button>
+            </div>
+            {!isNfcSupported && <p className="text-xs text-amber-700">ปุ่มอ่าน NFC ใช้ได้บน Chrome Android; เครื่องนี้ใช้การกรอกรหัสแทนได้</p>}
+            {nfcError && <p role="alert" className="text-xs text-red-600">{nfcError}</p>}
+          </div>
 
           <Input
             label="QR Code ที่ระบบจะสร้าง"
