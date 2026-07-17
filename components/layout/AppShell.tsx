@@ -17,7 +17,6 @@ import {
   TriangleAlert,
   User,
   Users,
-  Building2,
 } from 'lucide-react'
 import { useUnreadNotificationCount } from '@/hooks/useNotifications'
 import { useAuth, AuthGuard } from '@/lib/auth'
@@ -47,8 +46,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/discrepancies', label: 'ข้อคลาดเคลื่อน', icon: TriangleAlert, roles: ['admin', 'exec', 'tech'], feature: 'phase2Borrowing', section: 'operations' },
   { href: '/admin', label: 'เพิ่มเติม', icon: BriefcaseBusiness, roles: ['admin'], section: 'admin' },
   { href: '/admin/users', label: 'ผู้ใช้งาน', icon: Users, roles: ['admin'], section: 'admin' },
-  { href: '/admin/offices', label: 'สำนักงาน', icon: Building2, roles: ['admin'], section: 'admin' },
-  { href: '/admin/workhubs', label: 'WorkHub', icon: Building2, roles: ['admin'], section: 'admin' },
   { href: '/admin/usage-modes', label: 'โหมดใช้งาน', icon: BriefcaseBusiness, roles: ['admin'], feature: 'phase3Expansion', section: 'admin' },
   { href: '/admin/rfid', label: 'ตรวจนับ RFID', icon: Radio, roles: ['admin'], feature: 'phase3Expansion', section: 'admin' },
   { href: '/admin/reports', label: 'รายงาน', icon: FileBarChart, roles: ['admin'], feature: 'phase3Expansion', section: 'admin' },
@@ -180,6 +177,13 @@ export function isPhaseRouteEnabled(
   pathname: string,
   flags: PhaseFeatureFlags = PHASE_FEATURE_FLAGS,
 ): boolean {
+  // These administration modules are intentionally parked until the next
+  // operational phase. Keep direct URLs from exposing unfinished screens.
+  if (
+    pathname === '/admin/offices' || pathname.startsWith('/admin/offices/')
+    || pathname === '/admin/workhubs' || pathname.startsWith('/admin/workhubs/')
+    || pathname === '/admin/rfid' || pathname.startsWith('/admin/rfid/')
+  ) return false
   if (pathname === '/borrows' || pathname.startsWith('/borrows/')) {
     return flags.phase2Borrowing
   }
@@ -189,8 +193,6 @@ export function isPhaseRouteEnabled(
   if (
     pathname === '/admin/usage-modes'
     || pathname.startsWith('/admin/usage-modes/')
-    || pathname === '/admin/rfid'
-    || pathname.startsWith('/admin/rfid/')
     || pathname === '/admin/reports'
     || pathname.startsWith('/admin/reports/')
   ) {

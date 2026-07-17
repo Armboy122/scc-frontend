@@ -51,6 +51,7 @@ interface AuthContextValue {
   isLoading: boolean
   login: (creds: LoginRequest) => Promise<void>
   logout: () => Promise<void>
+  updateUser: (user: User) => void
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -159,8 +160,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [queryClient, router])
 
+  const updateUser = useCallback((nextUser: User) => setUser(nextUser), [])
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   )

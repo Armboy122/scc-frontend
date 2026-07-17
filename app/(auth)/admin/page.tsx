@@ -1,15 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { Building2, FileBarChart, Lock, Radio, Settings2, Users } from 'lucide-react'
+import { FileBarChart, Lock, Users } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 
 const links = [
-  { href: '/admin/users', label: 'ผู้ใช้งาน', description: 'บทบาท สำนักงาน และสถานะบัญชี', icon: Users },
-  { href: '/admin/offices', label: 'สำนักงาน', description: 'รายการสำนักงานและ WorkHub', icon: Building2 },
-  { href: '/admin/workhubs', label: 'WorkHub', description: 'โหนดระดับภูมิภาค', icon: Settings2 },
+  { href: '/admin/users', label: 'ผู้ใช้งาน', description: 'บทบาท ย้ายสำนักงาน และสถานะบัญชี', icon: Users },
   { href: '/admin/reports', label: 'รายงาน', description: 'สรุปและส่งออกข้อมูล', icon: FileBarChart },
-  { href: '/admin/rfid', label: 'ตรวจนับ RFID', description: 'เทียบรายการจาก reader กับสต็อก', icon: Radio },
 ]
 
 export default function AdminMorePage() {

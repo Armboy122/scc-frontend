@@ -128,8 +128,6 @@ export default function CheckTagPage() {
     } finally { setIsWriting(false) }
   }
 
-  if (!isAdmin) return <div className="page-padding mx-auto max-w-xl"><Card><h1 className="text-xl font-bold text-gray-900">ไม่มีสิทธิ์ตรวจสอบ NFC tag</h1><p className="mt-2 text-sm text-gray-600">หน้านี้ใช้สำหรับผู้ดูแลระบบตรวจสอบทะเบียน Cover เท่านั้น</p></Card></div>
-
   return <div className="page-padding mx-auto max-w-xl">
     <div className="mb-6 flex items-center gap-3">
       <button onClick={() => router.back()} className="-ml-2 rounded-xl p-2 transition-colors hover:bg-gray-100" aria-label="ย้อนกลับ"><ArrowLeft className="h-5 w-5 text-gray-600" /></button>
