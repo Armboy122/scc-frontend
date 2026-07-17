@@ -23,6 +23,7 @@ import { PHASE_FEATURE_FLAGS } from '@/lib/featureFlags'
 const schema = z
   .object({
     customerName: z.string().min(1, 'กรุณากรอกชื่อลูกค้า'),
+    requestNumber: z.string().optional(),
     customerPhone: z.string().optional(),
     installDate: z.string().min(1, 'กรุณาเลือกวันติดตั้ง'),
     removalDate: z.string().min(1, 'กรุณาเลือกวันถอด'),
@@ -91,6 +92,7 @@ export default function NewWorkOrderPage() {
       const res = await createMutation.mutateAsync({
         officeId: user.officeId,
         customerName: data.customerName,
+        requestNumber: data.requestNumber || undefined,
         customerPhone: data.customerPhone,
         installDate: toApiDate(data.installDate),
         removalDate: toApiDate(data.removalDate),
@@ -169,6 +171,8 @@ export default function NewWorkOrderPage() {
           error={errors.customerName?.message}
           {...register('customerName')}
         />
+
+        <Input label="เลขที่ใบคำร้อง" hint="ไม่บังคับ — เพิ่มหรือแก้ไขภายหลังได้" error={errors.requestNumber?.message} {...register('requestNumber')} />
 
         <Select label="ประเภทการใช้งาน" options={[{ value: 'CUSTOMER_COVER', label: 'งานครอบให้ผู้ใช้ไฟฟ้า' }, { value: 'INTERNAL', label: 'ใช้งานภายใน' }]} {...register('usageType')} />
 

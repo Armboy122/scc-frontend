@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertCircle, AtSign, Building2, CheckCircle2, Eye, EyeOff, KeyRound, LockKeyhole, LogOut, Shield, User as UserIcon } from 'lucide-react'
+import { AlertCircle, AtSign, Building2, CheckCircle2, Eye, EyeOff, KeyRound, LockKeyhole, LogOut, Pencil, Shield, User as UserIcon } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { api } from '@/lib/api'
 import { Card, CardHeader } from '@/components/ui/Card'
@@ -40,7 +40,7 @@ function InfoRow({ icon: Icon, label, value }: InfoRowProps) {
 }
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth()
+  const { user, logout, updateUser } = useAuth()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -48,8 +48,23 @@ export default function ProfilePage() {
   const [messageTone, setMessageTone] = useState<'error' | 'success'>('error')
   const [saving, setSaving] = useState(false)
   const [showPasswords, setShowPasswords] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [name, setName] = useState('')
 
   if (!user) return null
+
+  async function saveName(event: React.FormEvent) {
+    event.preventDefault()
+    if (!name.trim()) { setMessageTone('error'); setMessage('กรุณากรอกชื่อ-นามสกุล'); return }
+    setSaving(true); setMessage('')
+    try {
+      const response = await api.patch<typeof user>('/auth/profile', { name: name.trim() })
+      if (!response.data) throw new Error('บันทึกชื่อไม่สำเร็จ')
+      updateUser({ ...user, ...response.data })
+      setEditingName(false); setMessageTone('success'); setMessage('บันทึกชื่อ-นามสกุลแล้ว')
+    } catch (error) { setMessageTone('error'); setMessage(error instanceof Error ? error.message : 'บันทึกชื่อไม่สำเร็จ') }
+    finally { setSaving(false) }
+  }
 
   async function changePassword(event: React.FormEvent) {
     event.preventDefault()
@@ -80,7 +95,7 @@ export default function ProfilePage() {
         >
           {user.name.charAt(0).toUpperCase()}
         </div>
-        <h2 className="text-xl font-bold text-gray-900">{user.name}</h2>
+        {editingName ? <form onSubmit={saveName} className="mx-auto mt-1 flex max-w-xs gap-2"><Input aria-label="ชื่อ-นามสกุล" value={name} onChange={(event) => setName(event.target.value)} autoFocus /><Button type="submit" loading={saving}>บันทึก</Button></form> : <div className="flex items-center justify-center gap-1"><h2 className="text-xl font-bold text-gray-900">{user.name}</h2><button type="button" onClick={() => { setName(user.name); setEditingName(true) }} className="rounded-lg p-1.5 text-pea-700 hover:bg-pea-50" aria-label="แก้ไขชื่อ"><Pencil className="h-4 w-4" /></button></div>}
         <span className={['badge mt-2', ROLE_BADGE_CLASS[user.role]].join(' ')}>
           <Shield className="w-3 h-3" aria-hidden />
           {ROLE_LABEL[user.role]}

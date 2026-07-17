@@ -14,6 +14,8 @@ import {
 } from 'lucide-react'
 import { useWorkOrder, useCancelWorkOrder, useStartRemoval } from '@/hooks/useWorkOrders'
 import { useAuth } from '@/lib/auth'
+import { api } from '@/lib/api'
+import { Input } from '@/components/ui/Input'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -165,7 +167,9 @@ export default function WorkOrderDetailPage({
   const { id } = use(params)
   const router = useRouter()
   const { user } = useAuth()
-  const { data: order, isLoading, error } = useWorkOrder(id)
+  const { data: order, isLoading, error, refetch } = useWorkOrder(id)
+  const [requestNumber, setRequestNumber] = useState('')
+  const [savingRequestNumber, setSavingRequestNumber] = useState(false)
 
   if (isLoading) {
     return (
@@ -188,6 +192,12 @@ export default function WorkOrderDetailPage({
   }
 
   const rentalDays = daysBetween(order.installDate, order.removalDate)
+  const canEditRequestNumber = order.status === 'SCHEDULED' && (user?.role === 'admin' || user?.role === 'exec')
+  const saveRequestNumber = async () => {
+    setSavingRequestNumber(true)
+    try { await api.patch(`/workorders/${order.id}`, { requestNumber: requestNumber.trim() || null }); await refetch() }
+    finally { setSavingRequestNumber(false) }
+  }
 
   return (
     <div className="page-padding max-w-lg mx-auto space-y-4">
@@ -209,6 +219,7 @@ export default function WorkOrderDetailPage({
       {/* Info card */}
       <Card>
         <dl>
+          {order.requestNumber && !canEditRequestNumber && <InfoRow icon={Package} label="เลขที่ใบคำร้อง" value={order.requestNumber} />}
           <InfoRow
             icon={Calendar}
             label="วันติดตั้ง"
@@ -269,6 +280,7 @@ export default function WorkOrderDetailPage({
             />
           )}
         </dl>
+        {canEditRequestNumber && <div className="mt-3 border-t border-gray-100 pt-3"><div className="flex items-end gap-2"><div className="min-w-0 flex-1"><Input label="เลขที่ใบคำร้อง" hint="ไม่บังคับ สามารถกรอกภายหลังได้" defaultValue={order.requestNumber ?? ''} onChange={(event) => setRequestNumber(event.target.value)} /></div><Button type="button" loading={savingRequestNumber} onClick={() => void saveRequestNumber()}>บันทึก</Button></div></div>}
         {order.note && (
           <div className="mt-3 pt-3 border-t border-gray-100">
             <p className="text-xs text-gray-500 mb-1">หมายเหตุ</p>

@@ -125,15 +125,14 @@ describe('CheckTagPage — inspect and edit NFC tag (Flow 5)', () => {
     expect(await screen.findByText('เขียน tag และอัปเดตทะเบียนเรียบร้อย')).toBeInTheDocument()
   })
 
-  it('hides the edit panel for non-admin users', async () => {
+  it('allows non-admin users to inspect a tag but hides the edit panel', async () => {
     useAuthMock.mockReturnValue({
       user: { id: 'tech-1', name: 'Tech', role: 'tech', officeId: 'office-1' },
     })
     render(<CheckTagPage />)
 
-    expect(screen.getByText('ไม่มีสิทธิ์ตรวจสอบ NFC tag')).toBeInTheDocument()
-    expect(screen.queryByLabelText(/รหัสจาก tag/)).not.toBeInTheDocument()
-    expect(apiGetMock).not.toHaveBeenCalled()
+    expect(screen.getByLabelText(/รหัสจาก tag/)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/ข้อความใหม่ที่จะเขียนลง NFC/)).not.toBeInTheDocument()
   })
 
   it('prevents reusing an nfc id that already belongs to another tag', async () => {

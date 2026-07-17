@@ -70,16 +70,16 @@ export default function CoverDetailPage({ params }: { params: Promise<{ id: stri
     <div className="page-padding mx-auto max-w-3xl space-y-4">
       <button type="button" onClick={() => router.back()} className="inline-flex items-center gap-1 text-sm font-medium text-pea-700 hover:text-pea-800"><ArrowLeft className="h-4 w-4" /> กลับไปหน้าฉนวน</button>
 
-      <header className="overflow-hidden rounded-2xl bg-gray-950 px-5 py-6 text-white shadow-sm">
-        <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-medium uppercase tracking-[0.18em] text-pea-200">ทะเบียนฉนวน</p><h1 className="mt-1 font-mono text-2xl font-bold">{cover.assetCode}</h1></div><StatusBadge coverStatus={cover.status} /></div>
-        <div className="mt-4 flex flex-wrap gap-2">{labels.slice(1).map((label) => <span key={label} className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-xs text-white">{label}</span>)}</div>
+      <header className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 px-5 py-6 text-white shadow-lg shadow-slate-950/20">
+        <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-200">ทะเบียนฉนวน</p><h1 className="mt-2 break-all font-mono text-3xl font-black tracking-tight text-white sm:text-4xl">{cover.assetCode}</h1></div><StatusBadge coverStatus={cover.status} /></div>
+        <div className="mt-5 flex flex-wrap gap-2">{labels.slice(1).map((label) => <span key={label} className="rounded-full border border-amber-200/40 bg-amber-100 px-3 py-1.5 text-xs font-bold text-slate-950">{label}</span>)}</div>
       </header>
 
       {derivedAlerts.length > 0 && <Card className="border-orange-200 bg-orange-50"><p className="text-sm font-medium text-orange-800">{derivedAlerts.join(' · ')}</p></Card>}
 
-      <Card>
+      <Card className="border-slate-200 shadow-sm">
         <div className="mb-3 flex items-center gap-2"><Building2 className="h-5 w-5 text-pea-700" aria-hidden /><h2 className="font-semibold">ความรับผิดชอบของฉนวน</h2></div>
-        <dl className="grid gap-3 sm:grid-cols-2"><div className="rounded-xl bg-gray-50 p-3"><dt className="text-xs text-gray-500">สำนักงานเจ้าของ</dt><dd className="mt-1 font-semibold text-gray-900">{ownerName}</dd></div><div className="rounded-xl bg-gray-50 p-3"><dt className="text-xs text-gray-500">สำนักงานที่ครอบครองปัจจุบัน</dt><dd className="mt-1 font-semibold text-gray-900">{custodianName}</dd></div></dl>
+        <dl className="grid gap-3 sm:grid-cols-2"><div className="rounded-xl border border-sky-200 bg-sky-50 p-4"><dt className="text-xs font-bold uppercase tracking-wide text-sky-800">สำนักงานเจ้าของ</dt><dd className="mt-1 text-lg font-bold text-slate-950">{ownerName}</dd></div><div className="rounded-xl border border-violet-200 bg-violet-50 p-4"><dt className="text-xs font-bold uppercase tracking-wide text-violet-800">สำนักงานที่ครอบครองปัจจุบัน</dt><dd className="mt-1 text-lg font-bold text-slate-950">{custodianName}</dd></div></dl>
       </Card>
 
       {activeWorkOrder ? <Card className="border-pea-200 bg-pea-50/40"><div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-pea-700 shadow-sm"><Route className="h-5 w-5" aria-hidden /></span><div className="min-w-0"><h2 className="font-semibold text-gray-900">กำลังใช้งานกับใบงาน</h2><p className="mt-1 text-sm text-gray-700">{activeWorkOrder.customerName || 'งานติดตั้งในพื้นที่'}</p><dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2"><div><dt className="text-xs text-gray-500">กำหนดติดตั้ง</dt><dd>{formatDate(activeWorkOrder.installDate)}</dd></div><div><dt className="text-xs text-gray-500">กำหนดถอด</dt><dd>{formatDate(activeWorkOrder.removalDate)}</dd></div></dl></div></div></Card> : <Card className="border-gray-200"><div className="flex items-center gap-3"><PackageCheck className="h-6 w-6 text-gray-400" aria-hidden /><div><h2 className="font-semibold text-gray-900">ยังไม่มีงานติดตั้งที่กำลังใช้งาน</h2><p className="mt-0.5 text-sm text-gray-500">ฉนวนชิ้นนี้ไม่มีการติดตั้งค้างอยู่ในระบบ</p></div></div></Card>}

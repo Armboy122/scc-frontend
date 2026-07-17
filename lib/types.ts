@@ -166,6 +166,7 @@ export interface WorkOrder {
 
   usageType?: UsageType
   customerName: string
+	requestNumber?: string
   customerPhone?: string
   installDate?: string
   removalDate?: string
@@ -336,6 +337,7 @@ export interface RefreshResponse {
 export interface CreateWorkOrderRequest {
   officeId: string
   customerName: string
+	requestNumber?: string
   customerPhone?: string
   installDate: string
   removalDate: string
