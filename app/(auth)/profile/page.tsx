@@ -1,7 +1,9 @@
 'use client'
 
-import { LogOut, Shield, User as UserIcon, Building2, AtSign } from 'lucide-react'
+import { useState } from 'react'
+import { LogOut, Shield, User as UserIcon, Building2, AtSign, KeyRound } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
+import { api } from '@/lib/api'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import type { Role } from '@/lib/types'
@@ -38,8 +40,26 @@ function InfoRow({ icon: Icon, label, value }: InfoRowProps) {
 
 export default function ProfilePage() {
   const { user, logout } = useAuth()
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [message, setMessage] = useState('')
+  const [saving, setSaving] = useState(false)
 
   if (!user) return null
+
+  async function changePassword(event: React.FormEvent) {
+    event.preventDefault()
+    if (newPassword.length < 8) return setMessage('รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร')
+    if (newPassword !== confirmPassword) return setMessage('ยืนยันรหัสผ่านใหม่ไม่ตรงกัน')
+    setSaving(true); setMessage('')
+    try {
+      await api.post('/auth/change-password', { currentPassword, newPassword })
+      await logout()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'เปลี่ยนรหัสผ่านไม่สำเร็จ')
+    } finally { setSaving(false) }
+  }
 
   return (
     <div className="page-padding max-w-md mx-auto">
@@ -59,6 +79,17 @@ export default function ProfilePage() {
           <Shield className="w-3 h-3" aria-hidden />
           {ROLE_LABEL[user.role]}
         </span>
+      </Card>
+
+      <Card className="mb-4">
+        <CardHeader title="เปลี่ยนรหัสผ่าน" />
+        <form className="space-y-3" onSubmit={changePassword}>
+          <input className="input" type="password" required autoComplete="current-password" placeholder="รหัสผ่านปัจจุบัน" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+          <input className="input" type="password" required minLength={8} autoComplete="new-password" placeholder="รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+          <input className="input" type="password" required minLength={8} autoComplete="new-password" placeholder="ยืนยันรหัสผ่านใหม่" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+          {message && <p className="text-sm text-red-700">{message}</p>}
+          <Button type="submit" loading={saving} fullWidth leftIcon={<KeyRound className="w-4 h-4" />}>เปลี่ยนรหัสผ่าน</Button>
+        </form>
       </Card>
 
       {/* Info card */}
