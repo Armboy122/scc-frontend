@@ -135,6 +135,17 @@ export interface Cover {
   updatedAt: string
 }
 
+export interface CoverDetail {
+  cover: Cover
+  ownerOffice: Office
+  currentOffice: Office
+  activeBorrow?: { id: string; status: BorrowStatus; returnDate: string }
+  activeInstallation?: Installation
+  activeWorkOrder?: WorkOrder
+  lifecycleHistory: Array<{ action: string; actorId?: string; actorName?: string; createdAt: string; reason?: string }>
+  derivedAlerts: string[]
+}
+
 export interface Installation {
   id: string
   workOrderId: string
@@ -203,11 +214,24 @@ export interface DashboardOfficeStock {
   stock: StockSummary
 }
 
+/** Physical-asset deadline counts; plannedQty is never used here. */
+export interface DashboardMetrics {
+  removalDueSoonCovers: number
+  removalDueSoonWorkOrders: number
+  removalOverdueCovers: number
+  removalOverdueWorkOrders: number
+  borrowReturnDueSoonCovers: number
+  borrowReturnDueSoonBorrows: number
+  borrowReturnOverdueCovers: number
+  borrowReturnOverdueBorrows: number
+}
+
 export interface DashboardSummary {
   stockByOffice: DashboardOfficeStock[]
   workOrdersByStatus: DashboardWorkOrdersByStatus
   dueSoon: WorkOrder[]
   overdueRemovals: WorkOrder[]
+  metrics?: DashboardMetrics
 }
 
 export interface Notification {

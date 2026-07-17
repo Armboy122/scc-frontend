@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { CoverQrDownloadButton } from '@/components/feature/CoverQrDownloadButton'
 import { useOffices } from '@/hooks/useOffices'
+import { getCoverContextLabels } from '@/lib/coverPresentation'
 import type { CoverStatus } from '@/lib/types'
 
 const STATUS_OPTIONS: { label: string; value: CoverStatus | 'ALL' }[] = [
@@ -35,6 +36,9 @@ export default function CoversPage() {
   })
 
   const canRegister = user?.role === 'admin' || Boolean(user?.officeId)
+
+  const contextLabels = (cover: { status: CoverStatus; ownerOfficeId: string; currentOfficeId: string }) =>
+    getCoverContextLabels(cover).slice(1)
 
   return (
     <div className="page-padding max-w-6xl mx-auto">
@@ -111,7 +115,7 @@ export default function CoversPage() {
           {/* Mobile cards */}
           <div className="md:hidden space-y-2">
             {covers.map((cover) => (
-              <div key={cover.id} className="card-surface p-3 space-y-3">
+              <div key={cover.id} className="card-surface p-3 space-y-3 cursor-pointer" onClick={() => router.push(`/covers/${cover.id}`)}>
                 <div className="flex items-center gap-3">
                 <Shield className="w-8 h-8 text-pea-300 flex-shrink-0" aria-hidden />
                 <div className="flex-1 min-w-0">
@@ -120,6 +124,9 @@ export default function CoversPage() {
                 </div>
                 <StatusBadge coverStatus={cover.status} size="sm" />
                 </div>
+                {contextLabels(cover).map((label) => (
+                  <span key={label} className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">{label}</span>
+                ))}
                 <CoverQrDownloadButton cover={cover} fullWidth />
               </div>
             ))}
@@ -140,12 +147,15 @@ export default function CoversPage() {
               </thead>
               <tbody>
                 {covers.map((cover) => (
-                  <tr key={cover.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <tr key={cover.id} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer" onClick={() => router.push(`/covers/${cover.id}`)}>
                     <td className="px-4 py-3 font-mono font-medium">{cover.assetCode}</td>
                     <td className="px-4 py-3 font-mono text-gray-600 text-xs">{cover.qrCode}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{cover.nfcId ?? '-'}</td>
                     <td className="px-4 py-3">
                       <StatusBadge coverStatus={cover.status} size="sm" />
+                      {contextLabels(cover).map((label) => (
+                        <span key={label} className="ml-1 inline-flex rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">{label}</span>
+                      ))}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {cover.ownerOffice?.name ?? cover.ownerOfficeId}

@@ -120,6 +120,7 @@ export default function DashboardPage() {
 
   const summary = summaryQuery.data
   const status = summary?.workOrdersByStatus
+  const metrics = summary?.metrics
   const totalWorkOrders = status
     ? Object.values(status).reduce((total, count) => total + count, 0)
     : 0
@@ -182,6 +183,23 @@ export default function DashboardPage() {
               bgClass="bg-blue-50"
             />
           </div>
+
+          {metrics && (
+            <>
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+                กำหนดการติดตาม
+              </h2>
+              <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <SummaryCard label="ใกล้ครบกำหนดถอด" value={metrics.removalDueSoonCovers} icon={Clock} iconClass="text-orange-600" bgClass="bg-orange-50" />
+                <SummaryCard label="เกินกำหนดถอด" value={metrics.removalOverdueCovers} icon={AlertTriangle} iconClass="text-red-600" bgClass="bg-red-50" />
+                <SummaryCard label="ใกล้ครบกำหนดคืน" value={metrics.borrowReturnDueSoonCovers} icon={Clock} iconClass="text-amber-600" bgClass="bg-amber-50" />
+                <SummaryCard label="เกินกำหนดคืน" value={metrics.borrowReturnOverdueCovers} icon={AlertTriangle} iconClass="text-rose-600" bgClass="bg-rose-50" />
+              </div>
+              <p className="-mt-4 mb-6 text-xs text-gray-500">
+                นับจากฉนวนที่ติดตั้ง/ยืมจริง — ใกล้ครบกำหนดถอด {metrics.removalDueSoonWorkOrders} ใบงาน, ใกล้ครบกำหนดคืน {metrics.borrowReturnDueSoonBorrows} ใบยืม
+              </p>
+            </>
+          )}
 
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
             ใบงานตามสถานะ

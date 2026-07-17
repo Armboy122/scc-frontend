@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { invalidateOperationalQueries } from '@/lib/queryPolicy'
-import type { Cover, CoverQueryParams, RegisterCoverRequest } from '@/lib/types'
+import type { Cover, CoverDetail, CoverQueryParams, RegisterCoverRequest } from '@/lib/types'
 
 const KEYS = {
   all: ['covers'] as const,
@@ -29,6 +29,18 @@ export function useCover(id: string) {
     queryFn: async () => {
       const res = await api.get<Cover>(`/covers/${id}`)
       if (!res.data) throw new Error('Cover not found')
+      return res.data
+    },
+    enabled: Boolean(id),
+  })
+}
+
+export function useCoverDetail(id: string) {
+  return useQuery({
+    queryKey: [...KEYS.detail(id), 'projection'],
+    queryFn: async () => {
+      const res = await api.get<CoverDetail>(`/covers/${id}/detail`)
+      if (!res.data) throw new Error('Cover detail not found')
       return res.data
     },
     enabled: Boolean(id),
