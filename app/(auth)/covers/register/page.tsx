@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
@@ -28,7 +28,7 @@ const schema = z.object({
 type RegisterForm = z.infer<typeof schema>
 
 type NdefReader = {
-  scan: () => Promise<void>
+  scan: (options?: { signal?: AbortSignal }) => Promise<void>
   onreading: ((event: { message: { records: NdefRecord[] } }) => void) | null
 }
 
@@ -47,6 +47,8 @@ export default function RegisterCoverPage() {
   const [isNfcSupported, setIsNfcSupported] = useState(false)
   const [isScanningNfc, setIsScanningNfc] = useState(false)
   const [nfcError, setNfcError] = useState('')
+  const readerRef = useRef<NdefReader | null>(null)
+  const scanAbortRef = useRef<AbortController | null>(null)
 
   const {
     register,
@@ -72,6 +74,14 @@ export default function RegisterCoverPage() {
   useEffect(() => {
     setIsNfcSupported(typeof (window as unknown as { NDEFReader?: unknown }).NDEFReader === 'function')
   }, [])
+  useEffect(() => () => { releaseReader() }, [])
+
+  const releaseReader = () => {
+    if (readerRef.current) readerRef.current.onreading = null
+    readerRef.current = null
+    scanAbortRef.current?.abort()
+    scanAbortRef.current = null
+  }
 
   const scanNfc = async () => {
     const Reader = (window as unknown as { NDEFReader?: new () => NdefReader }).NDEFReader
@@ -81,19 +91,27 @@ export default function RegisterCoverPage() {
     }
     setNfcError('')
     setIsScanningNfc(true)
+    const controller = new AbortController()
     try {
       const reader = new Reader()
+      readerRef.current = reader
+      scanAbortRef.current = controller
       reader.onreading = ({ message }) => {
+        if (readerRef.current !== reader || controller.signal.aborted) return
         const code = message.records.map(readNdefText).find(Boolean)
         if (!code) {
           setNfcError('ไม่พบข้อความรหัสใน NFC tag')
         } else {
           setValue('nfcId', code, { shouldDirty: true, shouldValidate: true })
         }
+        releaseReader()
         setIsScanningNfc(false)
       }
-      await reader.scan()
+      await reader.scan({ signal: controller.signal })
     } catch {
+      if (controller.signal.aborted) return
+      if (scanAbortRef.current === controller) releaseReader()
+      else controller.abort()
       setIsScanningNfc(false)
       setNfcError('ไม่สามารถเริ่มอ่าน NFC ได้ กรุณาอนุญาต NFC แล้วลองใหม่')
     }

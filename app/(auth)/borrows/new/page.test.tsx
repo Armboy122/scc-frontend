@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Borrow, BorrowAvailability, Role } from '@/lib/types'
+import { ApiError } from '@/lib/api'
 import { NewBorrowForm } from './NewBorrowForm'
 
 const {
@@ -149,6 +150,22 @@ describe('NewBorrowPage canonical request', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('ขอได้ไม่เกิน 5 ชิ้น')
     expect(mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it('refreshes the availability snapshot when the server rejects stale capacity', async () => {
+    const user = userEvent.setup()
+    mutateAsync.mockRejectedValueOnce(new ApiError(
+      'requested quantity 4 exceeds current borrowable capacity 2',
+      'INSUFFICIENT_STOCK',
+      409,
+    ))
+    renderPage({ requestedQty: '4', returnDate: '2099-08-31' })
+
+    await user.selectOptions(await screen.findByLabelText(/สำนักงานผู้ให้ยืม/), 'lender-high')
+    await user.click(screen.getByRole('button', { name: 'ส่งคำขอยืม' }))
+
+    expect(await screen.findByText('จำนวนคงเหลือเปลี่ยนแล้ว กรุณาตรวจสอบจำนวนล่าสุดก่อนส่งอีกครั้ง')).toBeInTheDocument()
+    expect(refetch).toHaveBeenCalledOnce()
   })
 
   it('blocks a return deadline that is not in the future', async () => {

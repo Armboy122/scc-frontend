@@ -119,7 +119,16 @@ export function NewBorrowForm({ query }: { query: BorrowSearchParams }) {
         ...(data.note?.trim() ? { note: data.note.trim() } : {}),
       })
       router.replace(`/borrows/${borrow.id}`)
-    } catch {
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'INSUFFICIENT_STOCK') {
+        // Availability is intentionally only a snapshot. Refresh it after a
+        // server-side recheck fails so the form cap immediately converges on
+        // the lender's latest capacity.
+        await refetchAvailability()
+        setError('requestedQty', {
+          message: 'จำนวนคงเหลือเปลี่ยนแล้ว กรุณาตรวจสอบจำนวนล่าสุดก่อนส่งอีกครั้ง',
+        })
+      }
       // The mutation exposes the canonical API error below the form.
     }
   }

@@ -169,14 +169,14 @@ export default function DashboardPage() {
         <>
           <div className="mb-4 grid gap-3 sm:grid-cols-2">
             <SummaryCard
-              label="ฉนวนในคลัง (รวม)"
+              label="ฉนวนในคลัง (ตามที่อยู่จริง)"
               value={totalStock(summary, 'inStock')}
               icon={Package}
               iconClass="text-green-600"
               bgClass="bg-green-50"
             />
             <SummaryCard
-              label="ฉนวนติดตั้งอยู่"
+              label="ฉนวนติดตั้ง (ตามที่อยู่จริง)"
               value={totalStock(summary, 'installed')}
               icon={CheckCircle2}
               iconClass="text-blue-600"

@@ -72,7 +72,7 @@ async function lookupCode(user: ReturnType<typeof userEvent.setup>, code: string
 
 describe('CheckTagPage — inspect and edit NFC tag (Flow 5)', () => {
   it('shows asset code, nfc id, owner/current office and status for a found tag', async () => {
-    apiGetMock.mockResolvedValue({ data: { cover, eligible: false, reason: 'WRONG_OFFICE' } })
+    apiGetMock.mockResolvedValue({ data: cover })
     const user = userEvent.setup()
     render(<CheckTagPage />)
 
@@ -86,7 +86,7 @@ describe('CheckTagPage — inspect and edit NFC tag (Flow 5)', () => {
   })
 
   it('looks up by any code (nfc / qr / asset) via the lookup endpoint', async () => {
-    apiGetMock.mockResolvedValue({ data: { cover, eligible: true, reason: '' } })
+    apiGetMock.mockResolvedValue({ data: cover })
     const user = userEvent.setup()
     render(<CheckTagPage />)
 
@@ -107,7 +107,7 @@ describe('CheckTagPage — inspect and edit NFC tag (Flow 5)', () => {
 
   it('shows the admin edit panel and calls PATCH via updateNfc after writing', async () => {
     apiGetMock
-      .mockResolvedValueOnce({ data: { cover, eligible: false, reason: 'WRONG_OFFICE' } }) // initial lookup
+      .mockResolvedValueOnce({ data: cover }) // initial lookup
       .mockRejectedValueOnce(new ApiError('not found', 'NOT_FOUND', 404)) // replacement availability
     installWriter()
     const user = userEvent.setup()
@@ -129,20 +129,17 @@ describe('CheckTagPage — inspect and edit NFC tag (Flow 5)', () => {
     useAuthMock.mockReturnValue({
       user: { id: 'tech-1', name: 'Tech', role: 'tech', officeId: 'office-1' },
     })
-    apiGetMock.mockResolvedValue({ data: { cover, eligible: true, reason: '' } })
-    const user = userEvent.setup()
     render(<CheckTagPage />)
 
-    await lookupCode(user, 'TAG-OLD')
-    await screen.findByText('พบ tag ในทะเบียน')
-    expect(screen.queryByText('แก้ไข NFC tag')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText(/ข้อความใหม่ที่จะเขียนลง NFC/)).not.toBeInTheDocument()
+    expect(screen.getByText('ไม่มีสิทธิ์ตรวจสอบ NFC tag')).toBeInTheDocument()
+    expect(screen.queryByLabelText(/รหัสจาก tag/)).not.toBeInTheDocument()
+    expect(apiGetMock).not.toHaveBeenCalled()
   })
 
   it('prevents reusing an nfc id that already belongs to another tag', async () => {
     apiGetMock
-      .mockResolvedValueOnce({ data: { cover, eligible: false, reason: 'WRONG_OFFICE' } }) // initial lookup
-      .mockResolvedValueOnce({ data: { cover: { ...cover, id: 'cover-2' }, eligible: true, reason: '' } }) // dup found
+      .mockResolvedValueOnce({ data: cover }) // initial lookup
+      .mockResolvedValueOnce({ data: { ...cover, id: 'cover-2' } }) // dup found
     installWriter()
     const user = userEvent.setup()
     render(<CheckTagPage />)
@@ -161,7 +158,7 @@ describe('CheckTagPage — inspect and edit NFC tag (Flow 5)', () => {
 
   it('clearly warns about the risk when the tag is written but PATCH fails', async () => {
     apiGetMock
-      .mockResolvedValueOnce({ data: { cover, eligible: false, reason: 'WRONG_OFFICE' } })
+      .mockResolvedValueOnce({ data: cover })
       .mockRejectedValueOnce(new ApiError('not found', 'NOT_FOUND', 404))
     updateMutate.mockRejectedValueOnce(new ApiError('server error', 'INTERNAL', 500))
     installWriter()
@@ -181,7 +178,7 @@ describe('CheckTagPage — inspect and edit NFC tag (Flow 5)', () => {
   })
 
   it('disables the rewrite action when the browser cannot write NFC', async () => {
-    apiGetMock.mockResolvedValue({ data: { cover, eligible: false, reason: 'WRONG_OFFICE' } })
+    apiGetMock.mockResolvedValue({ data: cover })
     const user = userEvent.setup()
     render(<CheckTagPage />) // no NDEFReader
 

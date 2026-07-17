@@ -19,7 +19,7 @@ import type { Cover, RegisterCoverRequest } from '@/lib/types'
 
 interface RowData { id: string; assetCode: string; nfcId: string }
 interface RowError { assetCode?: string; nfcId?: string }
-type NdefReader = { scan: () => Promise<void>; onreading: ((event: { message: { records: NdefRecord[] } }) => void) | null }
+type NdefReader = { scan: (options?: { signal?: AbortSignal }) => Promise<void>; onreading: ((event: { message: { records: NdefRecord[] } }) => void) | null }
 type NdefReaderConstructor = new () => NdefReader
 
 const createRows = (assetCodes: string[]): RowData[] => assetCodes.map((assetCode) => ({ id: crypto.randomUUID(), assetCode, nfcId: '' }))
@@ -58,6 +58,7 @@ export default function BatchRegisterPage() {
   const [isScanning, setIsScanning] = useState(false)
   const [scanMessage, setScanMessage] = useState('')
   const readerRef = useRef<NdefReader | null>(null)
+  const scanAbortRef = useRef<AbortController | null>(null)
 
   const setRowsAndRef = (next: RowData[] | ((previous: RowData[]) => RowData[])) => {
     setRows((previous) => {
@@ -69,7 +70,7 @@ export default function BatchRegisterPage() {
 
   useEffect(() => { if (user?.role !== 'admin' && user?.officeId) setOfficeId(user.officeId) }, [user])
   useEffect(() => { setIsNfcSupported(typeof (window as unknown as { NDEFReader?: unknown }).NDEFReader === 'function') }, [])
-  useEffect(() => () => { if (readerRef.current) readerRef.current.onreading = null }, [])
+  useEffect(() => () => { releaseReader() }, [])
 
   const prepareRows = () => {
     const assetCodes = assetCodesText.split(/[\n,\t]+/).map((code) => code.trim()).filter(Boolean)
@@ -79,9 +80,15 @@ export default function BatchRegisterPage() {
     setRowsAndRef(createRows(assetCodes)); setRowErrors({}); setScanMessage('เตรียมรายการแล้ว กดเริ่มแตะ NFC เพื่อจับคู่ตามลำดับ')
   }
 
-  const stopScanning = () => {
+  const releaseReader = () => {
     if (readerRef.current) readerRef.current.onreading = null
-    readerRef.current = null; setIsScanning(false)
+    readerRef.current = null
+    scanAbortRef.current?.abort()
+    scanAbortRef.current = null
+  }
+
+  const stopScanning = () => {
+    releaseReader(); setIsScanning(false)
   }
 
   const startScanning = async () => {
@@ -90,9 +97,14 @@ export default function BatchRegisterPage() {
     if (!rowsRef.current.length) { setScanMessage('เตรียมรายการรหัสทรัพย์สินก่อนเริ่มแตะ NFC'); return }
     if (rowsRef.current.every((row) => row.nfcId)) { setScanMessage('จับคู่ NFC ครบทุกรายการแล้ว'); return }
     setScanMessage('พร้อมแล้ว — แตะ NFC tag ของรายการถัดไป')
+    const controller = new AbortController()
+    let reader: NdefReader | null = null
     try {
-      const reader = new Reader(); readerRef.current = reader
+      reader = new Reader()
+      readerRef.current = reader
+      scanAbortRef.current = controller
       reader.onreading = ({ message }) => {
+        if (readerRef.current !== reader || controller.signal.aborted) return
         const nfcId = message.records.map(readNdefText).find(Boolean)
         if (!nfcId) { setScanMessage('ไม่พบข้อความรหัสใน NFC tag — แตะ tag ถัดไปได้'); return }
         const current = rowsRef.current
@@ -106,8 +118,18 @@ export default function BatchRegisterPage() {
         if (remaining === 0) { stopScanning(); setScanMessage('จับคู่ NFC ครบทุกรายการแล้ว พร้อมลงทะเบียน') }
         else setScanMessage(`จับคู่ ${target.assetCode} แล้ว — เหลือ ${remaining} tag, แตะ tag ถัดไปได้เลย`)
       }
-      await reader.scan(); setIsScanning(true)
-    } catch { readerRef.current = null; setScanMessage('ไม่สามารถเริ่มอ่าน NFC ได้ กรุณาอนุญาต NFC แล้วลองใหม่') }
+      await reader.scan({ signal: controller.signal })
+      if (!controller.signal.aborted && readerRef.current === reader) setIsScanning(true)
+    } catch {
+      if (controller.signal.aborted) return
+      if (scanAbortRef.current === controller) releaseReader()
+      else {
+        if (reader) reader.onreading = null
+        controller.abort()
+      }
+      setIsScanning(false)
+      setScanMessage('ไม่สามารถเริ่มอ่าน NFC ได้ กรุณาอนุญาต NFC แล้วลองใหม่')
+    }
   }
 
   const validate = () => {
@@ -138,7 +160,7 @@ export default function BatchRegisterPage() {
 
     {createdCovers.length > 0 && <Card className="mb-5"><div className="mb-3 flex items-center justify-between gap-3"><div><h2 className="font-semibold text-gray-900">ลงทะเบียนเรียบร้อย</h2><p className="text-sm text-gray-500">{createdCovers.length} รายการ</p></div><Button type="button" variant="outline" onClick={() => setCreatedCovers([])}>ลงชุดใหม่</Button></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">{createdCovers.map((cover) => { const ownerOfficeName = isAdmin ? offices.find((office) => office.id === cover.ownerOfficeId)?.name : user?.office?.name; return <div key={cover.id} className="rounded-lg border border-gray-200 p-2 text-center"><Image src={svgToDataUrl(createCoverLabelSvg(cover, ownerOfficeName))} alt={`QR Code ${cover.assetCode}`} width={240} height={240} unoptimized className="h-auto w-full" /><button type="button" onClick={() => downloadSvg(`cover-${cover.assetCode}.svg`, createCoverLabelSvg(cover, ownerOfficeName))} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-pea-700 hover:text-pea-800"><Download className="h-3.5 w-3.5" />โหลด QR</button></div>})}</div></Card>}
 
-    <Card className="mb-4"><div className="flex items-start gap-3"><Tag className="mt-0.5 h-5 w-5 shrink-0 text-pea-700" /><div><h2 className="font-semibold text-gray-900">1. เตรียมรหัสทรัพย์สิน</h2><p className="mt-1 text-sm text-gray-600">วางรหัสทีละบรรทัดหรือคั่นด้วย comma ระบบจะสร้างลำดับให้ก่อนเริ่มแตะ NFC</p></div></div><div className="mt-4"><Textarea label="รหัสทรัพย์สิน" rows={7} value={assetCodesText} onChange={(event) => setAssetCodesText(event.target.value)} placeholder={'PEA-0001\nPEA-0002\nPEA-0003'} /></div><div className="mt-3"><Button type="button" onClick={prepareRows}>เตรียมรายการ</Button></div></Card>
+    <Card className="mb-4"><div className="flex items-start gap-3"><Tag className="mt-0.5 h-5 w-5 shrink-0 text-pea-700" /><div><h2 className="font-semibold text-gray-900">1. เตรียมรหัสทรัพย์สิน</h2><p className="mt-1 text-sm text-gray-600">วางรหัสทีละบรรทัดหรือคั่นด้วย comma ระบบจะสร้างลำดับให้ก่อนเริ่มแตะ NFC</p></div></div><div className="mt-4"><Textarea label="รหัสทรัพย์สิน" rows={7} value={assetCodesText} onChange={(event) => setAssetCodesText(event.target.value)} placeholder={'PEA-0001\nPEA-0002\nPEA-0003'} /></div><div className="mt-3"><Button type="button" onClick={prepareRows}>เตรียมรายการ</Button></div>{scanMessage && rows.length === 0 && <p role="status" className="mt-3 text-sm text-red-700">{scanMessage}</p>}</Card>
 
     {rows.length > 0 && <><Card className="mb-4 overflow-hidden p-0"><div className="flex flex-col gap-3 border-b border-pea-200 bg-pea-50 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-pea-900">2. แตะ NFC ตามลำดับ</p><p className="mt-1 text-sm text-pea-800">จับคู่แล้ว <span className="font-semibold tabular-nums">{paired}/{rows.length}</span> รายการ</p></div>{isScanning ? <Button type="button" variant="outline" leftIcon={<Square className="h-4 w-4" />} onClick={stopScanning}>หยุดอ่าน</Button> : <Button type="button" leftIcon={<Radio className="h-4 w-4" />} disabled={!isNfcSupported || paired === rows.length} onClick={() => void startScanning()}>เริ่มแตะ NFC</Button>}</div>{!isNfcSupported && <p className="px-4 pt-3 text-xs text-amber-700">การอ่าน NFC ใช้ได้บน Chrome Android ผ่าน HTTPS; สามารถกรอกรหัส NFC ลงในตารางได้</p>}{scanMessage && <p role="status" className="px-4 pt-3 text-sm text-pea-800">{scanMessage}</p>}<div className="overflow-x-auto p-4"><table className="w-full text-sm"><thead><tr className="border-b border-gray-100 text-left"><th className="w-10 pb-2 text-gray-500">#</th><th className="pb-2 text-gray-700">รหัสทรัพย์สิน</th><th className="pb-2 text-gray-700">NFC tag</th><th className="pb-2 text-gray-700">QR</th></tr></thead><tbody>{rows.map((row, index) => { const errors = rowErrors[row.id] ?? {}; return <tr key={row.id} className="border-b border-gray-100 last:border-0"><td className="py-3 text-gray-400">{index + 1}</td><td className="py-3 font-mono font-medium">{row.assetCode}{errors.assetCode && <p className="mt-1 text-xs text-red-600">{errors.assetCode}</p>}</td><td className="py-3"><Input aria-label={`NFC tag ${index + 1}`} value={row.nfcId} onChange={(event) => setRowsAndRef((previous) => previous.map((item) => item.id === row.id ? { ...item, nfcId: event.target.value } : item))} placeholder={isScanning && !row.nfcId ? 'แตะ tag นี้…' : 'รหัสจาก NFC'} className={errors.nfcId ? 'border-red-400' : row.nfcId ? 'border-green-300 bg-green-50' : ''} />{errors.nfcId && <p className="mt-1 text-xs text-red-600">{errors.nfcId}</p>}</td><td className="py-3 font-mono text-xs text-gray-500">{buildQrCode(officeId, row.assetCode)}</td></tr> })}</tbody></table></div></Card>
       {batchRegister.error instanceof ApiError && <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />{batchRegister.error.message}</div>}

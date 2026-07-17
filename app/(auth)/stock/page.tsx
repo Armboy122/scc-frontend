@@ -52,7 +52,7 @@ export default function StockPage() {
                   <h2 className="font-semibold text-gray-900">
                     {officeDisplayName(stock)}
                   </h2>
-                  <StockBadge count={stock.total} label="ทั้งหมด" />
+                  <StockBadge count={stock.total} label="อยู่กับสำนักงาน" />
                 </div>
                 <dl className="grid grid-cols-2 gap-2 text-sm">
                   <div className="col-span-2 bg-green-50 rounded-lg p-2.5 text-center">
@@ -63,7 +63,7 @@ export default function StockPage() {
                     </dd>
                   </div>
                   <div className="bg-blue-50 rounded-lg p-2.5 text-center">
-                    <dt className="text-xs text-gray-500 mb-1">ติดตั้ง</dt>
+                    <dt className="text-xs text-gray-500 mb-1">ติดตั้ง (ที่อยู่กับสำนักงาน)</dt>
                     <dd className="font-bold text-blue-700 text-lg tabular-nums">{stock.installed}</dd>
                   </div>
                   <div className="bg-orange-50 rounded-lg p-2.5 text-center">
@@ -89,10 +89,10 @@ export default function StockPage() {
                   <th className="text-right px-4 py-3 font-semibold text-gray-700">ในคลังจริง</th>
                   <th className="text-right px-4 py-3 font-semibold text-gray-700">กันใบงาน</th>
                   <th className="text-right px-4 py-3 font-semibold text-gray-700">กันให้ยืม</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700">ติดตั้ง</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700">ให้ยืม</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700">ยืมมา</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700">ทั้งหมด</th>
+                  <th className="text-right px-4 py-3 font-semibold text-gray-700">ติดตั้ง (ที่อยู่กับสำนักงาน)</th>
+                  <th className="text-right px-4 py-3 font-semibold text-gray-700">ให้ยืม*</th>
+                  <th className="text-right px-4 py-3 font-semibold text-gray-700">ยืมมา*</th>
+                  <th className="text-right px-4 py-3 font-semibold text-gray-700">รวมที่อยู่กับสำนักงาน</th>
                 </tr>
               </thead>
               <tbody>
@@ -131,6 +131,7 @@ export default function StockPage() {
                   </tr>
                 ))}
               </tbody>
+              <caption className="caption-bottom px-4 py-3 text-left text-xs text-gray-500">* ยอดให้ยืมและยืมมาเป็นมิติซ้อนกับในคลัง/ติดตั้ง จึงห้ามนำมาบวกกับยอดรวม</caption>
               <tfoot>
                 <tr className="bg-gray-50 border-t border-gray-200 font-semibold">
                   <td className="px-4 py-3 text-gray-700">รวมทั้งหมด</td>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, CheckCircle2, LoaderCircle, Pencil, Radio, Search, ShieldCheck, Tag } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { ApiError, api } from '@/lib/api'
@@ -12,10 +12,10 @@ import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { readNdefText, type NdefRecord, type NdefWriter } from '@/lib/nfc'
-import type { Cover, CoverLookupResult } from '@/lib/types'
+import type { Cover } from '@/lib/types'
 
 type NdefReader = {
-  scan: () => Promise<void>
+  scan: (options?: { signal?: AbortSignal }) => Promise<void>
   onreading: ((event: { message: { records: NdefRecord[] } }) => void) | null
 }
 
@@ -26,8 +26,6 @@ export default function CheckTagPage() {
   const router = useRouter()
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
-  // Office names are safe for all authenticated users and make the result
-  // useful for a field technician as well as an administrator.
   const { data: offices = [] } = useOffices()
   const updateNfc = useUpdateCoverNfc()
   const [code, setCode] = useState('')
@@ -38,10 +36,20 @@ export default function CheckTagPage() {
   const [isWriting, setIsWriting] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const readerRef = useRef<NdefReader | null>(null)
+  const scanAbortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     setIsNfcSupported(typeof (window as unknown as { NDEFReader?: unknown }).NDEFReader === 'function')
   }, [])
+  useEffect(() => () => { releaseReader() }, [])
+
+  const releaseReader = () => {
+    if (readerRef.current) readerRef.current.onreading = null
+    readerRef.current = null
+    scanAbortRef.current?.abort()
+    scanAbortRef.current = null
+  }
 
   const officeName = (id: string) => offices.find((office) => office.id === id)?.name ?? 'ไม่ระบุสำนักงาน'
 
@@ -50,10 +58,10 @@ export default function CheckTagPage() {
     if (!normalized) { setError('กรุณาแตะหรือกรอกรหัสจาก tag'); return }
     setError(''); setNotice(''); setResult(null)
     try {
-      const response = await api.get<CoverLookupResult>('/covers/lookup', { code: normalized })
-      if (!response.data?.cover) throw new Error('ไม่พบข้อมูล tag นี้')
-      setResult(response.data.cover)
-      setReplacementCode(response.data.cover.nfcId ?? normalized)
+      const response = await api.get<Cover>('/covers/lookup', { code: normalized })
+      if (!response.data) throw new Error('ไม่พบข้อมูล tag นี้')
+      setResult(response.data)
+      setReplacementCode(response.data.nfcId ?? normalized)
     } catch (lookupError) {
       setError(lookupError instanceof ApiError && lookupError.status === 404 ? 'ไม่พบ tag นี้ในทะเบียน' : 'ไม่สามารถตรวจสอบ tag ได้ กรุณาลองใหม่')
     }
@@ -63,17 +71,25 @@ export default function CheckTagPage() {
     const Reader = (window as unknown as { NDEFReader?: NdefReaderConstructor }).NDEFReader
     if (!Reader) { setError('อุปกรณ์นี้ยังอ่าน NFC ผ่านเว็บไม่ได้ กรุณาใช้ Chrome บน Android หรือกรอกรหัสเอง'); return }
     setError(''); setNotice(''); setIsScanning(true)
+    const controller = new AbortController()
     try {
       const reader = new Reader()
+      readerRef.current = reader
+      scanAbortRef.current = controller
       reader.onreading = ({ message }) => {
+        if (readerRef.current !== reader || controller.signal.aborted) return
         const found = message.records.map(readNdefText).find(Boolean)
+        releaseReader()
         setIsScanning(false)
         if (!found) { setError('ไม่พบข้อความรหัสใน NFC tag'); return }
         setCode(found)
         void lookup(found)
       }
-      await reader.scan()
+      await reader.scan({ signal: controller.signal })
     } catch {
+      if (controller.signal.aborted) return
+      if (scanAbortRef.current === controller) releaseReader()
+      else controller.abort()
       setIsScanning(false); setError('ไม่สามารถเริ่มอ่าน NFC ได้ กรุณาอนุญาต NFC แล้วลองใหม่')
     }
   }
@@ -81,8 +97,8 @@ export default function CheckTagPage() {
   const ensureReplacementAvailable = async (value: string) => {
     if (value === result?.nfcId) return
     try {
-      const existing = await api.get<CoverLookupResult>('/covers/lookup', { code: value })
-      if (existing.data?.cover && existing.data.cover.id !== result?.id) throw new Error('รหัสใหม่นี้ถูกใช้กับ tag อื่นแล้ว')
+      const existing = await api.get<Cover>('/covers/lookup', { code: value })
+      if (existing.data && existing.data.id !== result?.id) throw new Error('รหัสใหม่นี้ถูกใช้กับ tag อื่นแล้ว')
     } catch (lookupError) {
       if (lookupError instanceof ApiError && lookupError.status === 404) return
       throw lookupError
@@ -111,6 +127,8 @@ export default function CheckTagPage() {
         : writeError instanceof Error ? writeError.message : 'ไม่สามารถแก้ไข tag ได้ กรุณาลองใหม่')
     } finally { setIsWriting(false) }
   }
+
+  if (!isAdmin) return <div className="page-padding mx-auto max-w-xl"><Card><h1 className="text-xl font-bold text-gray-900">ไม่มีสิทธิ์ตรวจสอบ NFC tag</h1><p className="mt-2 text-sm text-gray-600">หน้านี้ใช้สำหรับผู้ดูแลระบบตรวจสอบทะเบียน Cover เท่านั้น</p></Card></div>
 
   return <div className="page-padding mx-auto max-w-xl">
     <div className="mb-6 flex items-center gap-3">

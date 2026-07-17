@@ -93,12 +93,7 @@ describe('BatchRegisterPage — multi register (Flow 4)', () => {
     expect(screen.queryByLabelText('NFC tag 1')).not.toBeInTheDocument()
   })
 
-  // BUG-BATCH-PREP (P2): prepareRows() sets scanMessage for the empty and
-  // duplicate cases, but the scanMessage element is only rendered inside the
-  // `rows.length > 0` block. On a first attempt the list stays empty, so the
-  // warning is never shown and the "เตรียมรายการ" button appears to do nothing.
-  // This test documents the intended behavior and currently fails.
-  it.fails('should surface the duplicate warning to the user', async () => {
+  it('surfaces the duplicate warning on the first prepare attempt', async () => {
     const user = userEvent.setup()
     render(<BatchRegisterPage />)
     await prepare(user, 'PEA-1\nPEA-1')
@@ -106,7 +101,7 @@ describe('BatchRegisterPage — multi register (Flow 4)', () => {
     expect(await screen.findByText(/รหัสทรัพย์สินซ้ำ: PEA-1/)).toBeInTheDocument()
   })
 
-  it.fails('should surface the empty-input warning to the user', async () => {
+  it('surfaces the empty-input warning on the first prepare attempt', async () => {
     const user = userEvent.setup()
     render(<BatchRegisterPage />)
     await user.click(screen.getByRole('button', { name: 'เตรียมรายการ' }))
@@ -238,6 +233,55 @@ describe('BatchRegisterPage — multi register (Flow 4)', () => {
     const row1 = screen.getByLabelText('NFC tag 1') as HTMLInputElement
     expect(row1.value).toBe('')
     expect(screen.getByRole('button', { name: /เริ่มแตะ NFC/ })).toBeInTheDocument()
+  })
+
+  it('aborts the reader and ignores events after scanning is stopped', async () => {
+    installReader()
+    const user = userEvent.setup()
+    render(<BatchRegisterPage />)
+    await prepare(user, 'PEA-1')
+
+    await user.click(screen.getByRole('button', { name: /เริ่มแตะ NFC/ }))
+    const [[options]] = reader.scan.mock.calls as unknown as [[{ signal?: AbortSignal }]]
+    const signal = options.signal as AbortSignal
+    expect(signal).toBeDefined()
+
+    await user.click(await screen.findByRole('button', { name: /หยุดอ่าน/ }))
+    expect(signal.aborted).toBe(true)
+
+    await tap('TAG-A')
+    expect(screen.getByLabelText('NFC tag 1')).toHaveValue('')
+  })
+
+  it('aborts the reader when the page unmounts', async () => {
+    installReader()
+    const user = userEvent.setup()
+    const view = render(<BatchRegisterPage />)
+    await prepare(user, 'PEA-1')
+
+    await user.click(screen.getByRole('button', { name: /เริ่มแตะ NFC/ }))
+    const [[options]] = reader.scan.mock.calls as unknown as [[{ signal?: AbortSignal }]]
+    const signal = options.signal as AbortSignal
+    view.unmount()
+
+    expect(signal.aborted).toBe(true)
+    await tap('TAG-A')
+  })
+
+  it('aborts and cleans up the reader when starting scan fails', async () => {
+    installReader()
+    reader.scan.mockRejectedValueOnce(new Error('permission denied'))
+    const user = userEvent.setup()
+    render(<BatchRegisterPage />)
+    await prepare(user, 'PEA-1')
+
+    await user.click(screen.getByRole('button', { name: /เริ่มแตะ NFC/ }))
+    const [[options]] = reader.scan.mock.calls as unknown as [[{ signal?: AbortSignal }]]
+    expect(options.signal?.aborted).toBe(true)
+    expect(await screen.findByText(/ไม่สามารถเริ่มอ่าน NFC/)).toBeInTheDocument()
+
+    await tap('TAG-A')
+    expect(screen.getByLabelText('NFC tag 1')).toHaveValue('')
   })
 
   it('exposes the row QR preview as SCC:office:asset', async () => {
