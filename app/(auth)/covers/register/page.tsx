@@ -9,9 +9,11 @@ import { z } from 'zod'
 import { ArrowLeft, Download, Plus } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useRegisterCover } from '@/hooks/useCovers'
+import { useOffices } from '@/hooks/useOffices'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { Select } from '@/components/ui/Select'
 import { ApiError } from '@/lib/api'
 import { createCoverLabelSvg, downloadSvg, svgToDataUrl } from '@/lib/qr'
 import type { Cover } from '@/lib/types'
@@ -33,6 +35,8 @@ export default function RegisterCoverPage() {
   const { user } = useAuth()
   const router = useRouter()
   const registerCover = useRegisterCover()
+  const isAdmin = user?.role === 'admin'
+  const { data: offices = [], isLoading: isLoadingOffices } = useOffices(isAdmin)
   const [createdCover, setCreatedCover] = useState<Cover | null>(null)
 
   const {
@@ -50,16 +54,16 @@ export default function RegisterCoverPage() {
   const ownerOfficeId = watch('ownerOfficeId') ?? ''
 
   useEffect(() => {
-    if (user?.officeId) {
-      setValue('ownerOfficeId', user.role === 'admin' ? ownerOfficeId || user.officeId : user.officeId)
+    if (!isAdmin && user?.officeId) {
+      setValue('ownerOfficeId', user.officeId)
     }
-  }, [ownerOfficeId, setValue, user])
+  }, [isAdmin, setValue, user?.officeId])
 
   const onSubmit = async (data: RegisterForm) => {
     try {
       const payload = {
         ...data,
-        ownerOfficeId: user?.role === 'admin' ? data.ownerOfficeId : user?.officeId ?? data.ownerOfficeId,
+        ownerOfficeId: isAdmin ? data.ownerOfficeId : user?.officeId ?? data.ownerOfficeId,
       }
       const res = await registerCover.mutateAsync(payload)
       if (res.data) {
@@ -146,14 +150,29 @@ export default function RegisterCoverPage() {
             {...register('nfcId')}
           />
 
-          <Input
-            label="รหัสสำนักงานเจ้าของ"
-            placeholder="Office ID"
-            required
-            readOnly={user?.role !== 'admin'}
-            error={errors.ownerOfficeId?.message}
-            {...register('ownerOfficeId')}
-          />
+          {isAdmin ? (
+            <Select
+              label="สำนักงานเจ้าของ"
+              placeholder={isLoadingOffices ? 'กำลังโหลดสำนักงาน…' : 'เลือกสำนักงาน'}
+              required
+              disabled={isLoadingOffices}
+              error={errors.ownerOfficeId?.message}
+              options={offices.map((office) => ({ value: office.id, label: office.name }))}
+              {...register('ownerOfficeId')}
+            />
+          ) : (
+            <>
+              <Input
+                label="สำนักงานเจ้าของ"
+                value={user?.office?.name ?? user?.officeId ?? 'ไม่พบสำนักงานในบัญชี'}
+                readOnly
+              />
+              <input type="hidden" {...register('ownerOfficeId')} />
+              {errors.ownerOfficeId?.message && (
+                <p role="alert" className="text-xs text-red-600">{errors.ownerOfficeId.message}</p>
+              )}
+            </>
+          )}
 
           {registerCover.error instanceof ApiError && (
             <p role="alert" className="text-sm text-red-600 text-center">
