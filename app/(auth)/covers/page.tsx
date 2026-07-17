@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { PenLine, Plus, Search, Shield } from 'lucide-react'
+import { PenLine, Plus, Radio, Search, Shield } from 'lucide-react'
 import { useCovers } from '@/hooks/useCovers'
 import { useAuth } from '@/lib/auth'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -27,7 +27,9 @@ export default function CoversPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<CoverStatus | 'ALL'>('ALL')
   const [officeId, setOfficeId] = useState('')
-  const { data: offices = [] } = useOffices(user?.role === 'admin')
+  // The list API supplies names for the rare projection where a cover omits
+  // ownerOffice. Never make an internal office ID the user-facing fallback.
+  const { data: offices = [] } = useOffices()
 
   const { data: covers = [], isLoading, error } = useCovers({
     status: statusFilter !== 'ALL' ? statusFilter : undefined,
@@ -39,6 +41,8 @@ export default function CoversPage() {
 
   const contextLabels = (cover: { status: CoverStatus; ownerOfficeId: string; currentOfficeId: string }) =>
     getCoverContextLabels(cover).slice(1)
+  const officeName = (cover: { ownerOfficeId: string; ownerOffice?: { name: string } }) =>
+    cover.ownerOffice?.name ?? offices.find((office) => office.id === cover.ownerOfficeId)?.name ?? 'ไม่ระบุสำนักงาน'
 
   return (
     <div className="page-padding max-w-6xl mx-auto">
@@ -50,6 +54,7 @@ export default function CoversPage() {
         </div>
         {canRegister && (
           <div className="flex w-full gap-2 sm:w-auto">
+            <Button size="md" variant="outline" leftIcon={<Radio className="w-4 h-4" />} onClick={() => router.push('/covers/check-tag')} className="flex-1 sm:flex-none">ตรวจ tag</Button>
             <Button size="md" variant="outline" leftIcon={<PenLine className="w-4 h-4" />} onClick={() => router.push('/covers/write-nfc')} className="flex-1 sm:flex-none">เขียน NFC</Button>
             <Button size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push('/covers/register')} className="flex-1 sm:flex-none">ลงทะเบียน</Button>
           </div>
@@ -123,7 +128,7 @@ export default function CoversPage() {
                 {contextLabels(cover).map((label) => (
                   <span key={label} className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">{label}</span>
                 ))}
-                <CoverQrDownloadButton cover={cover} fullWidth />
+                <CoverQrDownloadButton cover={cover} ownerOfficeName={officeName(cover)} fullWidth />
               </div>
             ))}
           </div>
@@ -154,10 +159,10 @@ export default function CoversPage() {
                       ))}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {cover.ownerOffice?.name ?? cover.ownerOfficeId}
+                      {officeName(cover)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <CoverQrDownloadButton cover={cover} />
+                      <CoverQrDownloadButton cover={cover} ownerOfficeName={officeName(cover)} />
                     </td>
                   </tr>
                 ))}

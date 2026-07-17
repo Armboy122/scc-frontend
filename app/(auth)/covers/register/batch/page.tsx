@@ -1,275 +1,148 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, ArrowLeft, AlertCircle, Download } from 'lucide-react'
+import { AlertCircle, ArrowLeft, CheckCircle2, Download, Radio, Square, Tag } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useBatchRegisterCovers } from '@/hooks/useCovers'
+import { useOffices } from '@/hooks/useOffices'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { Textarea } from '@/components/ui/Textarea'
+import { Select } from '@/components/ui/Select'
 import { ApiError } from '@/lib/api'
+import { readNdefText, type NdefRecord } from '@/lib/nfc'
 import { createCoverLabelSvg, downloadSvg, svgToDataUrl } from '@/lib/qr'
 import type { Cover, RegisterCoverRequest } from '@/lib/types'
 
-interface RowData {
-  id: string
-  assetCode: string
-}
+interface RowData { id: string; assetCode: string; nfcId: string }
+interface RowError { assetCode?: string; nfcId?: string }
+type NdefReader = { scan: () => Promise<void>; onreading: ((event: { message: { records: NdefRecord[] } }) => void) | null }
+type NdefReaderConstructor = new () => NdefReader
 
-interface RowError {
-  assetCode?: string
-}
+const createRows = (assetCodes: string[]): RowData[] => assetCodes.map((assetCode) => ({ id: crypto.randomUUID(), assetCode, nfcId: '' }))
+const buildQrCode = (officeId: string, assetCode: string) => officeId.trim() && assetCode.trim() ? `SCC:${officeId.trim()}:${assetCode.trim()}` : '-'
 
-function createRow(): RowData {
-  return { id: crypto.randomUUID(), assetCode: '' }
-}
-
-function buildQrCode(ownerOfficeId: string, assetCode: string): string {
-  if (!ownerOfficeId.trim() || !assetCode.trim()) return '-'
-  return `SCC:${ownerOfficeId.trim()}:${assetCode.trim()}`
+function OwnerOfficeSelector({ officeId, submitted, onChange }: { officeId: string; submitted: boolean; onChange: (value: string) => void }) {
+  const { data: offices = [], isLoading } = useOffices()
+  return (
+    <Select
+      label="สำนักงานเจ้าของ"
+      required
+      placeholder={isLoading ? 'กำลังโหลดสำนักงาน…' : 'เลือกสำนักงาน'}
+      disabled={isLoading}
+      options={offices.map((office) => ({ value: office.id, label: office.name }))}
+      value={officeId}
+      onChange={(event) => onChange(event.target.value)}
+      error={submitted && !officeId.trim() ? 'กรุณาเลือกสำนักงาน' : undefined}
+    />
+  )
 }
 
 export default function BatchRegisterPage() {
   const { user } = useAuth()
   const router = useRouter()
   const batchRegister = useBatchRegisterCovers()
-
+  const isAdmin = user?.role === 'admin'
+  const { data: offices = [] } = useOffices(isAdmin)
   const [officeId, setOfficeId] = useState(user?.officeId ?? '')
-  const [rows, setRows] = useState<RowData[]>([createRow()])
+  const [assetCodesText, setAssetCodesText] = useState('')
+  const [rows, setRows] = useState<RowData[]>([])
+  const rowsRef = useRef<RowData[]>([])
   const [rowErrors, setRowErrors] = useState<Record<string, RowError>>({})
   const [submitted, setSubmitted] = useState(false)
   const [createdCovers, setCreatedCovers] = useState<Cover[]>([])
+  const [isNfcSupported, setIsNfcSupported] = useState(false)
+  const [isScanning, setIsScanning] = useState(false)
+  const [scanMessage, setScanMessage] = useState('')
+  const readerRef = useRef<NdefReader | null>(null)
 
-  useEffect(() => {
-    if (user?.role !== 'admin' && user?.officeId) {
-      setOfficeId(user.officeId)
-    }
-  }, [user])
-
-  const updateRow = (id: string, field: keyof RowData, value: string) => {
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)))
-    // Clear error on change
-    setRowErrors((prev) => {
-      const next = { ...prev }
-      if (next[id]) {
-        delete next[id][field as keyof RowError]
-      }
-      return next
+  const setRowsAndRef = (next: RowData[] | ((previous: RowData[]) => RowData[])) => {
+    setRows((previous) => {
+      const value = typeof next === 'function' ? next(previous) : next
+      rowsRef.current = value
+      return value
     })
   }
 
-  const addRow = () => setRows((prev) => [...prev, createRow()])
+  useEffect(() => { if (user?.role !== 'admin' && user?.officeId) setOfficeId(user.officeId) }, [user])
+  useEffect(() => { setIsNfcSupported(typeof (window as unknown as { NDEFReader?: unknown }).NDEFReader === 'function') }, [])
+  useEffect(() => () => { if (readerRef.current) readerRef.current.onreading = null }, [])
 
-  const removeRow = (id: string) => {
-    setRows((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev))
+  const prepareRows = () => {
+    const assetCodes = assetCodesText.split(/[\n,\t]+/).map((code) => code.trim()).filter(Boolean)
+    if (!assetCodes.length) { setScanMessage('กรุณาใส่รหัสทรัพย์สินอย่างน้อย 1 รายการ'); return }
+    const duplicate = assetCodes.find((code, index) => assetCodes.indexOf(code) !== index)
+    if (duplicate) { setScanMessage(`รหัสทรัพย์สินซ้ำ: ${duplicate}`); return }
+    setRowsAndRef(createRows(assetCodes)); setRowErrors({}); setScanMessage('เตรียมรายการแล้ว กดเริ่มแตะ NFC เพื่อจับคู่ตามลำดับ')
   }
 
-  const validate = (): boolean => {
-    const errors: Record<string, RowError> = {}
-    const seenCodes = new Set<string>()
-    let valid = true
+  const stopScanning = () => {
+    if (readerRef.current) readerRef.current.onreading = null
+    readerRef.current = null; setIsScanning(false)
+  }
 
+  const startScanning = async () => {
+    const Reader = (window as unknown as { NDEFReader?: NdefReaderConstructor }).NDEFReader
+    if (!Reader) { setScanMessage('อุปกรณ์นี้ยังอ่าน NFC ผ่านเว็บไม่ได้ กรุณาใช้ Chrome บน Android หรือกรอกรหัส NFC เอง'); return }
+    if (!rowsRef.current.length) { setScanMessage('เตรียมรายการรหัสทรัพย์สินก่อนเริ่มแตะ NFC'); return }
+    if (rowsRef.current.every((row) => row.nfcId)) { setScanMessage('จับคู่ NFC ครบทุกรายการแล้ว'); return }
+    setScanMessage('พร้อมแล้ว — แตะ NFC tag ของรายการถัดไป')
+    try {
+      const reader = new Reader(); readerRef.current = reader
+      reader.onreading = ({ message }) => {
+        const nfcId = message.records.map(readNdefText).find(Boolean)
+        if (!nfcId) { setScanMessage('ไม่พบข้อความรหัสใน NFC tag — แตะ tag ถัดไปได้'); return }
+        const current = rowsRef.current
+        const targetIndex = current.findIndex((row) => !row.nfcId)
+        if (targetIndex < 0) { stopScanning(); setScanMessage('จับคู่ NFC ครบทุกรายการแล้ว'); return }
+        if (current.some((row) => row.nfcId === nfcId)) { setScanMessage(`รหัส NFC ${nfcId} ถูกจับคู่ไปแล้ว — กรุณาแตะ tag อื่น`); return }
+        const target = current[targetIndex]
+        setRowsAndRef(current.map((row, index) => index === targetIndex ? { ...row, nfcId } : row))
+        setRowErrors((previous) => { const next = { ...previous }; if (next[target.id]) delete next[target.id].nfcId; return next })
+        const remaining = current.length - targetIndex - 1
+        if (remaining === 0) { stopScanning(); setScanMessage('จับคู่ NFC ครบทุกรายการแล้ว พร้อมลงทะเบียน') }
+        else setScanMessage(`จับคู่ ${target.assetCode} แล้ว — เหลือ ${remaining} tag, แตะ tag ถัดไปได้เลย`)
+      }
+      await reader.scan(); setIsScanning(true)
+    } catch { readerRef.current = null; setScanMessage('ไม่สามารถเริ่มอ่าน NFC ได้ กรุณาอนุญาต NFC แล้วลองใหม่') }
+  }
+
+  const validate = () => {
+    const errors: Record<string, RowError> = {}; const assets = new Set<string>(); const nfcTags = new Set<string>(); let valid = Boolean(rows.length)
     rows.forEach((row) => {
-      const rowErr: RowError = {}
-      if (!row.assetCode.trim()) {
-        rowErr.assetCode = 'จำเป็น'
-        valid = false
-      }
-      if (row.assetCode && seenCodes.has(row.assetCode)) {
-        rowErr.assetCode = 'ซ้ำ'
-        valid = false
-      }
-      if (row.assetCode) seenCodes.add(row.assetCode)
-      if (Object.keys(rowErr).length > 0) errors[row.id] = rowErr
+      const error: RowError = {}; const asset = row.assetCode.trim(); const nfc = row.nfcId.trim()
+      if (!asset) error.assetCode = 'จำเป็น'; else if (assets.has(asset)) error.assetCode = 'ซ้ำ'; else assets.add(asset)
+      if (!nfc) error.nfcId = 'ยังไม่ได้แตะ'; else if (nfcTags.has(nfc)) error.nfcId = 'ซ้ำ'; else nfcTags.add(nfc)
+      if (Object.keys(error).length) { errors[row.id] = error; valid = false }
     })
-
-    setRowErrors(errors)
-    return valid
+    setRowErrors(errors); return valid
   }
 
   const handleSubmit = async () => {
-    setSubmitted(true)
-    if (!officeId.trim()) return
-    if (!validate()) return
-
-    const items: RegisterCoverRequest[] = rows.map((r) => ({
-      assetCode: r.assetCode.trim(),
-      ownerOfficeId: officeId.trim(),
-    }))
-
+    setSubmitted(true); if (!officeId.trim() || !validate()) return
+    const items: RegisterCoverRequest[] = rows.map((row) => ({ assetCode: row.assetCode.trim(), nfcId: row.nfcId.trim(), ownerOfficeId: officeId.trim() }))
     try {
-      const res = await batchRegister.mutateAsync({
-        ownerOfficeId: officeId.trim(),
-        items,
-      })
-      if (res.data) {
-        setCreatedCovers(res.data)
-        setRows([createRow()])
-      }
-    } catch {
-      // error shown below
-    }
+      const response = await batchRegister.mutateAsync({ ownerOfficeId: officeId.trim(), items })
+      if (response.data) { setCreatedCovers(response.data); setRowsAndRef([]); setAssetCodesText(''); setScanMessage('') }
+    } catch { /* Mutation error is rendered below. */ }
   }
 
-  return (
-    <div className="page-padding max-w-4xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={() => router.back()}
-          className="p-2 rounded-xl hover:bg-gray-100 transition-colors -ml-2"
-          aria-label="ย้อนกลับ"
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-600" aria-hidden />
-        </button>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">ลงทะเบียนหลายรายการ</h1>
-          <p className="text-sm text-gray-500">เพิ่มฉนวนหลายชิ้นพร้อมกัน</p>
-        </div>
-      </div>
+  const paired = rows.filter((row) => row.nfcId).length
+  return <div className="page-padding mx-auto max-w-4xl">
+    <div className="mb-6 flex items-center gap-3"><button onClick={() => router.back()} className="-ml-2 rounded-xl p-2 transition-colors hover:bg-gray-100" aria-label="ย้อนกลับ"><ArrowLeft className="h-5 w-5 text-gray-600" /></button><div><h1 className="text-xl font-bold text-gray-900">ลงทะเบียนหลายรายการด้วย NFC</h1><p className="text-sm text-gray-500">เตรียมรหัสทรัพย์สินก่อน แล้วแตะ tag ต่อเนื่องตามลำดับ</p></div></div>
 
-      {/* Office selector */}
-      <Card className="mb-5">
-        <Input
-          label="รหัสสำนักงานเจ้าของ"
-          required
-          value={officeId}
-          onChange={(e) => setOfficeId(e.target.value)}
-          readOnly={user?.role !== 'admin'}
-          error={submitted && !officeId.trim() ? 'กรุณากรอกรหัสสำนักงาน' : undefined}
-          placeholder="Office ID"
-        />
-      </Card>
+    <Card className="mb-5">{isAdmin ? <OwnerOfficeSelector officeId={officeId} submitted={submitted} onChange={setOfficeId} /> : <Input label="สำนักงานเจ้าของ" value={user?.office?.name ?? 'ไม่พบสำนักงานในบัญชี'} readOnly />}</Card>
 
-      {createdCovers.length > 0 && (
-        <Card className="mb-5">
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <div>
-              <h2 className="font-semibold text-gray-900">QR ที่สร้างแล้ว</h2>
-              <p className="text-sm text-gray-500">{createdCovers.length} รายการ</p>
-            </div>
-            <Button type="button" variant="outline" onClick={() => setCreatedCovers([])}>
-              ลงชุดใหม่
-            </Button>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {createdCovers.map((cover) => (
-              <div key={cover.id} className="rounded-lg border border-gray-200 p-2 text-center">
-                <Image
-                  src={svgToDataUrl(createCoverLabelSvg(cover))}
-                  alt={`QR Code ${cover.assetCode}`}
-                  width={240}
-                  height={240}
-                  unoptimized
-                  className="w-full h-auto"
-                />
-                <button
-                  type="button"
-                  onClick={() => downloadSvg(`cover-${cover.assetCode}.svg`, createCoverLabelSvg(cover))}
-                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-pea-700 hover:text-pea-800"
-                >
-                  <Download className="w-3.5 h-3.5" aria-hidden />
-                  โหลด QR
-                </button>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
+    {createdCovers.length > 0 && <Card className="mb-5"><div className="mb-3 flex items-center justify-between gap-3"><div><h2 className="font-semibold text-gray-900">ลงทะเบียนเรียบร้อย</h2><p className="text-sm text-gray-500">{createdCovers.length} รายการ</p></div><Button type="button" variant="outline" onClick={() => setCreatedCovers([])}>ลงชุดใหม่</Button></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">{createdCovers.map((cover) => { const ownerOfficeName = isAdmin ? offices.find((office) => office.id === cover.ownerOfficeId)?.name : user?.office?.name; return <div key={cover.id} className="rounded-lg border border-gray-200 p-2 text-center"><Image src={svgToDataUrl(createCoverLabelSvg(cover, ownerOfficeName))} alt={`QR Code ${cover.assetCode}`} width={240} height={240} unoptimized className="h-auto w-full" /><button type="button" onClick={() => downloadSvg(`cover-${cover.assetCode}.svg`, createCoverLabelSvg(cover, ownerOfficeName))} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-pea-700 hover:text-pea-800"><Download className="h-3.5 w-3.5" />โหลด QR</button></div>})}</div></Card>}
 
-      {/* Rows table */}
-      <div className="mb-4 rounded-xl border border-pea-200 bg-pea-50 px-4 py-3 text-sm text-pea-900">
-        <p className="font-semibold">NFC ถูกเขียนรหัสทรัพย์สินไว้ล่วงหน้า</p>
-        <p className="mt-1 text-pea-800">อ่านหรือกรอกรหัสจาก NFC tag เช่น PEA0000000001 ในแต่ละแถว แล้วลงทะเบียนเพื่อผูกเข้ากับสำนักงาน/คลังนี้</p>
-      </div>
-      <Card padding="none" className="overflow-hidden mb-4">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left px-3 py-3 font-semibold text-gray-700 w-10">#</th>
-                <th className="text-left px-3 py-3 font-semibold text-gray-700">รหัสทรัพย์สิน *</th>
-                <th className="text-left px-3 py-3 font-semibold text-gray-700">QR Code</th>
-                <th className="w-12" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => {
-                const errs = rowErrors[row.id] ?? {}
-                return (
-                  <tr key={row.id} className="border-b border-gray-100">
-                    <td className="px-3 py-2 text-gray-400 text-xs">{i + 1}</td>
-                    <td className="px-2 py-2">
-                      <input
-                        value={row.assetCode}
-                        onChange={(e) => updateRow(row.id, 'assetCode', e.target.value)}
-                        placeholder="PEA-XXXX"
-                        className={[
-                          'w-full h-9 px-2 rounded-lg border text-sm',
-                          'focus:outline-none focus:ring-2 focus:ring-pea-400',
-                          errs.assetCode ? 'border-red-400 bg-red-50' : 'border-gray-200',
-                        ].join(' ')}
-                      />
-                      {errs.assetCode && (
-                        <span className="text-xs text-red-600">{errs.assetCode}</span>
-                      )}
-                    </td>
-                    <td className="px-2 py-2">
-                      <div className="min-h-9 px-2 py-2 rounded-lg bg-gray-50 border border-gray-200 font-mono text-xs text-gray-600 break-all">
-                        {buildQrCode(officeId, row.assetCode)}
-                      </div>
-                    </td>
-                    <td className="px-2 py-2">
-                      <button
-                        type="button"
-                        onClick={() => removeRow(row.id)}
-                        disabled={rows.length === 1}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-30"
-                        aria-label="ลบแถว"
-                      >
-                        <Trash2 className="w-4 h-4" aria-hidden />
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+    <Card className="mb-4"><div className="flex items-start gap-3"><Tag className="mt-0.5 h-5 w-5 shrink-0 text-pea-700" /><div><h2 className="font-semibold text-gray-900">1. เตรียมรหัสทรัพย์สิน</h2><p className="mt-1 text-sm text-gray-600">วางรหัสทีละบรรทัดหรือคั่นด้วย comma ระบบจะสร้างลำดับให้ก่อนเริ่มแตะ NFC</p></div></div><div className="mt-4"><Textarea label="รหัสทรัพย์สิน" rows={7} value={assetCodesText} onChange={(event) => setAssetCodesText(event.target.value)} placeholder={'PEA-0001\nPEA-0002\nPEA-0003'} /></div><div className="mt-3"><Button type="button" onClick={prepareRows}>เตรียมรายการ</Button></div></Card>
 
-        <div className="px-4 py-3 border-t border-gray-100">
-          <button
-            type="button"
-            onClick={addRow}
-            className="flex items-center gap-1.5 text-sm text-pea-600 hover:text-pea-700 font-medium"
-          >
-            <Plus className="w-4 h-4" aria-hidden />
-            เพิ่มแถว
-          </button>
-        </div>
-      </Card>
-
-      {batchRegister.error instanceof ApiError && (
-        <div role="alert" className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 mb-4">
-          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" aria-hidden />
-          {batchRegister.error.message}
-        </div>
-      )}
-
-      <div className="flex gap-3">
-        <Button type="button" variant="outline" size="lg" onClick={() => router.back()} className="flex-1">
-          ยกเลิก
-        </Button>
-        <Button
-          size="lg"
-          className="flex-1"
-          loading={batchRegister.isPending}
-          onClick={() => void handleSubmit()}
-        >
-          ลงทะเบียน {rows.length} รายการ
-        </Button>
-      </div>
-    </div>
-  )
+    {rows.length > 0 && <><Card className="mb-4 overflow-hidden p-0"><div className="flex flex-col gap-3 border-b border-pea-200 bg-pea-50 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-pea-900">2. แตะ NFC ตามลำดับ</p><p className="mt-1 text-sm text-pea-800">จับคู่แล้ว <span className="font-semibold tabular-nums">{paired}/{rows.length}</span> รายการ</p></div>{isScanning ? <Button type="button" variant="outline" leftIcon={<Square className="h-4 w-4" />} onClick={stopScanning}>หยุดอ่าน</Button> : <Button type="button" leftIcon={<Radio className="h-4 w-4" />} disabled={!isNfcSupported || paired === rows.length} onClick={() => void startScanning()}>เริ่มแตะ NFC</Button>}</div>{!isNfcSupported && <p className="px-4 pt-3 text-xs text-amber-700">การอ่าน NFC ใช้ได้บน Chrome Android ผ่าน HTTPS; สามารถกรอกรหัส NFC ลงในตารางได้</p>}{scanMessage && <p role="status" className="px-4 pt-3 text-sm text-pea-800">{scanMessage}</p>}<div className="overflow-x-auto p-4"><table className="w-full text-sm"><thead><tr className="border-b border-gray-100 text-left"><th className="w-10 pb-2 text-gray-500">#</th><th className="pb-2 text-gray-700">รหัสทรัพย์สิน</th><th className="pb-2 text-gray-700">NFC tag</th><th className="pb-2 text-gray-700">QR</th></tr></thead><tbody>{rows.map((row, index) => { const errors = rowErrors[row.id] ?? {}; return <tr key={row.id} className="border-b border-gray-100 last:border-0"><td className="py-3 text-gray-400">{index + 1}</td><td className="py-3 font-mono font-medium">{row.assetCode}{errors.assetCode && <p className="mt-1 text-xs text-red-600">{errors.assetCode}</p>}</td><td className="py-3"><Input aria-label={`NFC tag ${index + 1}`} value={row.nfcId} onChange={(event) => setRowsAndRef((previous) => previous.map((item) => item.id === row.id ? { ...item, nfcId: event.target.value } : item))} placeholder={isScanning && !row.nfcId ? 'แตะ tag นี้…' : 'รหัสจาก NFC'} className={errors.nfcId ? 'border-red-400' : row.nfcId ? 'border-green-300 bg-green-50' : ''} />{errors.nfcId && <p className="mt-1 text-xs text-red-600">{errors.nfcId}</p>}</td><td className="py-3 font-mono text-xs text-gray-500">{buildQrCode(officeId, row.assetCode)}</td></tr> })}</tbody></table></div></Card>
+      {batchRegister.error instanceof ApiError && <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />{batchRegister.error.message}</div>}
+      <div className="flex gap-3"><Button type="button" variant="outline" size="lg" onClick={() => router.back()} className="flex-1">ยกเลิก</Button><Button size="lg" className="flex-1" loading={batchRegister.isPending} onClick={() => void handleSubmit()} leftIcon={<CheckCircle2 className="h-4 w-4" />}>ลงทะเบียน {rows.length} รายการ</Button></div>
+    </>}
+  </div>
 }

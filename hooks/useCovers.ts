@@ -39,9 +39,18 @@ export function useCoverDetail(id: string) {
   return useQuery({
     queryKey: [...KEYS.detail(id), 'projection'],
     queryFn: async () => {
-      const res = await api.get<CoverDetail>(`/covers/${id}/detail`)
-      if (!res.data) throw new Error('Cover detail not found')
-      return res.data
+      try {
+        const res = await api.get<CoverDetail>(`/covers/${id}/detail`)
+        if (!res.data) throw new Error('Cover detail not found')
+        return res.data
+      } catch {
+        // Older API deployments did not expose the detail projection. Keep
+        // the asset reachable with its base record while those deploys roll
+        // forward; the richer context arrives automatically afterwards.
+        const res = await api.get<Cover>(`/covers/${id}`)
+        if (!res.data) throw new Error('Cover not found')
+        return { cover: res.data, lifecycleHistory: [], derivedAlerts: [] } satisfies CoverDetail
+      }
     },
     enabled: Boolean(id),
   })
@@ -66,6 +75,16 @@ export function useBatchRegisterCovers() {
     mutationFn: (payload: { ownerOfficeId: string; items: RegisterCoverRequest[] }) =>
       api.post<Cover[]>('/covers/batch', payload),
     onSuccess: () => invalidateOperationalQueries(qc),
+  })
+}
+
+export function useUpdateCoverNfc() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, nfcId }: { id: string; nfcId: string }) => api.patch<Cover>(`/covers/${id}/nfc`, { nfcId }),
+    onSuccess: async (_data, { id }) => {
+      await Promise.all([qc.invalidateQueries({ queryKey: KEYS.detail(id) }), invalidateOperationalQueries(qc)])
+    },
   })
 }
 

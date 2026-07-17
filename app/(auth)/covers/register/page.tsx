@@ -21,6 +21,7 @@ import type { Cover } from '@/lib/types'
 
 const schema = z.object({
   assetCode: z.string().min(1, 'กรุณากรอกรหัสทรัพย์สิน'),
+  nfcId: z.string(),
   ownerOfficeId: z.string().min(1, 'กรุณากรอกรหัสสำนักงาน'),
 })
 
@@ -59,6 +60,7 @@ export default function RegisterCoverPage() {
     defaultValues: { ownerOfficeId: user?.officeId ?? '' },
   })
   const assetCode = watch('assetCode') ?? ''
+  const nfcId = watch('nfcId') ?? ''
   const ownerOfficeId = watch('ownerOfficeId') ?? ''
 
   useEffect(() => {
@@ -84,9 +86,9 @@ export default function RegisterCoverPage() {
       reader.onreading = ({ message }) => {
         const code = message.records.map(readNdefText).find(Boolean)
         if (!code) {
-          setNfcError('ไม่พบข้อความรหัสทรัพย์สิน')
+          setNfcError('ไม่พบข้อความรหัสใน NFC tag')
         } else {
-          setValue('assetCode', code, { shouldDirty: true, shouldValidate: true })
+          setValue('nfcId', code, { shouldDirty: true, shouldValidate: true })
         }
         setIsScanningNfc(false)
       }
@@ -100,7 +102,8 @@ export default function RegisterCoverPage() {
   const onSubmit = async (data: RegisterForm) => {
     try {
       const payload = {
-        ...data,
+        assetCode: data.assetCode.trim(),
+        ...(data.nfcId.trim() ? { nfcId: data.nfcId.trim() } : {}),
         ownerOfficeId: isAdmin ? data.ownerOfficeId : user?.officeId ?? data.ownerOfficeId,
       }
       const res = await registerCover.mutateAsync(payload)
@@ -108,6 +111,7 @@ export default function RegisterCoverPage() {
         setCreatedCover(res.data)
         reset({
           assetCode: '',
+          nfcId: '',
           ownerOfficeId: payload.ownerOfficeId,
         })
       }
@@ -135,21 +139,21 @@ export default function RegisterCoverPage() {
       {createdCover && (
         <Card className="mb-4 text-center">
           <Image
-            src={svgToDataUrl(createCoverLabelSvg(createdCover))}
+            src={svgToDataUrl(createCoverLabelSvg(createdCover, isAdmin ? offices.find((office) => office.id === createdCover.ownerOfficeId)?.name : user?.office?.name))}
             alt={`QR Code ${createdCover.assetCode}`}
             width={224}
             height={224}
             unoptimized
             className="mx-auto w-56 h-auto"
           />
-          <p className="mt-3 text-sm font-medium text-green-700">ผูก NFC {createdCover.assetCode} เข้าคลังเรียบร้อย</p>
+          <p className="mt-3 text-sm font-medium text-green-700">ลงทะเบียน {createdCover.assetCode} เข้าคลังเรียบร้อย</p>
           <div className="mt-3 flex gap-2">
             <Button
               type="button"
               variant="outline"
               className="flex-1"
               leftIcon={<Download className="w-4 h-4" />}
-              onClick={() => downloadSvg(`cover-${createdCover.assetCode}.svg`, createCoverLabelSvg(createdCover))}
+              onClick={() => downloadSvg(`cover-${createdCover.assetCode}.svg`, createCoverLabelSvg(createdCover, isAdmin ? offices.find((office) => office.id === createdCover.ownerOfficeId)?.name : user?.office?.name))}
             >
               โหลด QR
             </Button>
@@ -168,26 +172,32 @@ export default function RegisterCoverPage() {
       <Card>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="rounded-xl border border-pea-200 bg-pea-50 px-4 py-3 text-sm text-pea-900">
-            <p className="font-semibold">แตะ NFC เพื่อเพิ่มฉนวน</p>
-            <p className="mt-1 text-pea-800">NFC tag ถูกเขียนรหัสทรัพย์สินไว้แล้ว เช่น PEA0000000001 ระบบจะอ่านรหัสนี้แล้วผูกเข้ากับสำนักงาน/คลังที่เลือก</p>
+            <p className="font-semibold">กรอกรหัสทรัพย์สิน แล้วแตะ NFC (ถ้ามี)</p>
+            <p className="mt-1 text-pea-800">ระบบเก็บรหัสทรัพย์สินและรหัสใน NFC แยกกัน เพื่อให้ตรวจสอบ tag ได้แม้รหัสบน tag ไม่ตรงกับรหัสทรัพย์สิน</p>
           </div>
+          <Input
+            label="รหัสทรัพย์สิน"
+            placeholder="เช่น PEA0000000001"
+            required
+            error={errors.assetCode?.message}
+            {...register('assetCode')}
+          />
           <div className="space-y-2">
             <div className="flex items-end gap-2">
               <div className="min-w-0 flex-1">
                 <Input
-                  label="รหัสจาก NFC / รหัสทรัพย์สิน"
-                  placeholder="PEA0000000001"
-                  required
-                  error={errors.assetCode?.message}
-                  hint="กรอกรหัสจาก tag ได้ หากอุปกรณ์ไม่รองรับ NFC"
-                  {...register('assetCode')}
+                  label="รหัสใน NFC tag"
+                  placeholder="แตะ NFC หรือกรอกรหัส"
+                  error={errors.nfcId?.message}
+                  hint="ไม่บังคับ หากฉนวนยังไม่มี NFC; แตะเพื่ออ่านและบันทึกรหัส tag อัตโนมัติ"
+                  {...register('nfcId')}
                 />
               </div>
               <Button type="button" variant="outline" className="mb-5 shrink-0" onClick={() => void scanNfc()} disabled={isScanningNfc} leftIcon={isScanningNfc ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Radio className="h-4 w-4" />}>
                 {isScanningNfc ? 'กำลังแตะ…' : 'อ่าน NFC'}
               </Button>
             </div>
-            {!isNfcSupported && <p className="text-xs text-amber-700">ปุ่มอ่าน NFC ใช้ได้บน Chrome Android; เครื่องนี้ใช้การกรอกรหัสแทนได้</p>}
+            {!isNfcSupported && <p className="text-xs text-amber-700">ปุ่มอ่าน NFC ใช้ได้บน Chrome Android; เครื่องนี้กรอกรหัส NFC เองได้</p>}
             {nfcError && <p role="alert" className="text-xs text-red-600">{nfcError}</p>}
           </div>
 
@@ -211,7 +221,7 @@ export default function RegisterCoverPage() {
             <>
               <Input
                 label="สำนักงานเจ้าของ"
-                value={user?.office?.name ?? user?.officeId ?? 'ไม่พบสำนักงานในบัญชี'}
+                value={user?.office?.name ?? 'ไม่พบสำนักงานในบัญชี'}
                 readOnly
               />
               <input type="hidden" {...register('ownerOfficeId')} />

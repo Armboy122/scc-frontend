@@ -137,8 +137,8 @@ export interface Cover {
 
 export interface CoverDetail {
   cover: Cover
-  ownerOffice: Office
-  currentOffice: Office
+  ownerOffice?: Office
+  currentOffice?: Office
   activeBorrow?: { id: string; status: BorrowStatus; returnDate: string }
   activeInstallation?: Installation
   activeWorkOrder?: WorkOrder
@@ -351,6 +351,12 @@ export interface RegisterCoverRequest {
   qrCode?: string
   nfcId?: string
   ownerOfficeId: string
+}
+
+export interface CoverLookupResult {
+  cover: Cover
+  eligible: boolean
+  reason: 'NOT_IN_STOCK' | 'WRONG_OFFICE' | 'RETIRED' | ''
 }
 
 export interface SubmitInstallRequest {

@@ -47,10 +47,10 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
   )
 }
 
-function ReferenceLink({ href, value }: { href: string; value: string }) {
+function ReferenceLink({ href, label }: { href: string; label: string }) {
   return (
-    <Link href={href} className="inline-flex items-center gap-1 font-mono text-pea-700 hover:text-pea-800 hover:underline">
-      {value}
+    <Link href={href} className="inline-flex items-center gap-1 text-pea-700 hover:text-pea-800 hover:underline">
+      {label}
       <ExternalLink className="h-3.5 w-3.5" aria-hidden />
     </Link>
   )
@@ -128,7 +128,6 @@ export function DiscrepancyDetailContent({ id }: { id: string }) {
             {getDiscrepancyTypeLabel(discrepancy.type)}
           </p>
           <h1 className="mt-1 text-xl font-bold text-gray-900">รายละเอียดข้อคลาดเคลื่อน</h1>
-          <p className="mt-1 truncate font-mono text-xs text-gray-400">{discrepancy.id}</p>
         </div>
         <StatusPill status={discrepancy.status} />
       </header>
@@ -150,7 +149,7 @@ export function DiscrepancyDetailContent({ id }: { id: string }) {
             {discrepancy.observedQty === null ? '—' : `${discrepancy.observedQty} ชิ้น`}
           </DetailRow>
           <DetailRow label="ผู้รายงาน">
-            {discrepancy.reportedById ? <span className="font-mono">{discrepancy.reportedById}</span> : 'ระบบ'}
+            {discrepancy.reportedById ? 'ผู้ใช้งานในระบบ' : 'ระบบ'}
           </DetailRow>
           <DetailRow label="เวลารายงาน">{formatDiscrepancyDate(discrepancy.createdAt)}</DetailRow>
         </dl>
@@ -167,16 +166,16 @@ export function DiscrepancyDetailContent({ id }: { id: string }) {
           </div>
           <dl className="mt-1">
             {discrepancy.coverId && (
-              <DetailRow label="Cover ID"><span className="font-mono">{discrepancy.coverId}</span></DetailRow>
+              <DetailRow label="ฉนวน"><ReferenceLink href={`/covers/${encodeURIComponent(discrepancy.coverId)}`} label="เปิดข้อมูลฉนวน" /></DetailRow>
             )}
             {discrepancy.workOrderId && (
-              <DetailRow label="Work order">
-                <ReferenceLink href={`/workorders/${encodeURIComponent(discrepancy.workOrderId)}`} value={discrepancy.workOrderId} />
+              <DetailRow label="ใบงาน">
+                <ReferenceLink href={`/workorders/${encodeURIComponent(discrepancy.workOrderId)}`} label="เปิดใบงานที่เกี่ยวข้อง" />
               </DetailRow>
             )}
             {discrepancy.borrowId && (
-              <DetailRow label="Borrow">
-                <ReferenceLink href={`/borrows/${encodeURIComponent(discrepancy.borrowId)}`} value={discrepancy.borrowId} />
+              <DetailRow label="ใบยืม">
+                <ReferenceLink href={`/borrows/${encodeURIComponent(discrepancy.borrowId)}`} label="เปิดใบยืมที่เกี่ยวข้อง" />
               </DetailRow>
             )}
           </dl>
@@ -192,7 +191,7 @@ export function DiscrepancyDetailContent({ id }: { id: string }) {
               <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-emerald-900">{discrepancy.resolutionNote}</p>
               <p className="mt-3 text-xs text-emerald-700">
                 {formatDiscrepancyDate(discrepancy.resolvedAt)}
-                {discrepancy.resolvedById ? ` · โดย ${discrepancy.resolvedById}` : ''}
+                {discrepancy.resolvedById ? ' · โดยผู้ใช้งานในระบบ' : ''}
               </p>
             </div>
           </div>

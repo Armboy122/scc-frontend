@@ -249,7 +249,7 @@ export default function WorkOrderDetailPage({
             value={
               user && order.assignedToId === user.id
                 ? `${user.name} (คุณ)`
-                : order.assignedUser?.name ?? order.assignedToId ?? 'ยังไม่มอบหมาย'
+                : order.assignedUser?.name ?? 'ยังไม่มอบหมาย'
             }
           />
           {order.latitude && order.longitude && (
@@ -294,7 +294,7 @@ export default function WorkOrderDetailPage({
                 <span className="w-5 h-5 rounded-full bg-pea-100 text-pea-700 text-xs font-bold flex items-center justify-center flex-shrink-0">
                   {i + 1}
                 </span>
-                <span className="font-mono">{inst.coverId}</span>
+                <span>ฉนวนรายการที่ {i + 1}</span>
               </li>
             ))}
           </ul>

@@ -267,7 +267,6 @@ export function BorrowDetailContent({ id }: { id: string }) {
         </button>
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold text-gray-900 truncate">รายละเอียดใบยืม</h1>
-          <p className="text-xs text-gray-400 font-mono truncate">{borrow.id}</p>
         </div>
         <StatusBadge borrowStatus={borrow.status} />
       </div>
@@ -343,7 +342,6 @@ export function BorrowDetailContent({ id }: { id: string }) {
                   <p className="truncate font-mono text-sm font-semibold text-gray-900">
                     {cover.assetCode}
                   </p>
-                  <p className="truncate font-mono text-xs text-gray-400">{cover.id}</p>
                 </div>
                 <StatusBadge coverStatus={cover.status} size="sm" />
               </li>

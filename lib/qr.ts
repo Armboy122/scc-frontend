@@ -195,13 +195,14 @@ export function createQrSvg(payload: string, moduleSize = 8, margin = 4): string
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect width="100%" height="100%" fill="#fff"/><g fill="#111">${rects.join('')}</g></svg>`
 }
 
-export function createCoverLabelSvg(cover: Cover): string {
+export function createCoverLabelSvg(cover: Cover, ownerOfficeName?: string): string {
   const qr = createQrSvg(cover.qrCode, 7, 4)
   const qrBody = qr
     .replace(/^<svg[^>]*>/, '')
     .replace('<rect width="100%" height="100%" fill="#fff"/>', '')
     .replace('</svg>', '')
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="460" viewBox="0 0 360 460"><rect width="360" height="460" rx="16" fill="#fff"/><rect x="12" y="12" width="336" height="436" rx="12" fill="none" stroke="#111" stroke-width="2"/><g transform="translate(36 34)">${qrBody}</g><text x="180" y="360" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#111">${escapeXml(cover.assetCode)}</text><text x="180" y="390" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#444">${escapeXml(cover.qrCode)}</text><text x="180" y="420" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#666">${escapeXml(cover.ownerOfficeId)}</text></svg>`
+  const officeLabel = ownerOfficeName?.trim() || cover.ownerOffice?.name || 'สำนักงานไม่ระบุ'
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="460" viewBox="0 0 360 460"><rect width="360" height="460" rx="16" fill="#fff"/><rect x="12" y="12" width="336" height="436" rx="12" fill="none" stroke="#111" stroke-width="2"/><g transform="translate(36 34)">${qrBody}</g><text x="180" y="360" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#111">${escapeXml(cover.assetCode)}</text><text x="180" y="390" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#444">${escapeXml(cover.qrCode)}</text><text x="180" y="420" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#666">${escapeXml(officeLabel)}</text></svg>`
 }
 
 export function svgToDataUrl(svg: string): string {

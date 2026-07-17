@@ -60,7 +60,7 @@ export function WorkOrderAssignmentCard({ order }: { order: WorkOrder }) {
     if (order.assignedToId && !available.some((option) => option.value === order.assignedToId)) {
       available.unshift({
         value: order.assignedToId,
-        label: `ผู้รับผิดชอบปัจจุบัน (${order.assignedToId})`,
+        label: 'ผู้รับผิดชอบปัจจุบัน (ไม่พบชื่อในรายชื่อช่าง)',
       })
     }
     return available
@@ -69,7 +69,7 @@ export function WorkOrderAssignmentCard({ order }: { order: WorkOrder }) {
   if (!canManage) return null
 
   const currentName = order.assignedToId
-    ? options.find((option) => option.value === order.assignedToId)?.label ?? order.assignedToId
+    ? options.find((option) => option.value === order.assignedToId)?.label ?? 'ผู้รับผิดชอบปัจจุบัน'
     : 'ยังไม่มอบหมาย'
   const isSaving = assignMutation.isPending || unassignMutation.isPending
   const errorMessage = mutationErrorMessage(assignMutation.error ?? unassignMutation.error)

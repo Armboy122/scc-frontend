@@ -209,7 +209,6 @@ export default function BorrowsPage() {
                     <dd className="font-medium text-gray-800">{formatDate(borrow.returnDate)}</dd>
                   </div>
                 </dl>
-                <p className="text-xs text-gray-400 mt-3 font-mono truncate">{borrow.id}</p>
               </Card>
             </Link>
           ))}

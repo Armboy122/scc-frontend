@@ -10,6 +10,7 @@ interface CoverQrDownloadButtonProps {
   size?: 'sm' | 'md'
   fullWidth?: boolean
   className?: string
+  ownerOfficeName?: string
 }
 
 export function CoverQrDownloadButton({
@@ -17,6 +18,7 @@ export function CoverQrDownloadButton({
   size = 'sm',
   fullWidth = false,
   className = '',
+  ownerOfficeName,
 }: CoverQrDownloadButtonProps) {
   return (
     <Button
@@ -26,7 +28,7 @@ export function CoverQrDownloadButton({
       fullWidth={fullWidth}
       className={className}
       leftIcon={<Download className="w-4 h-4" />}
-      onClick={() => downloadSvg(`cover-${cover.assetCode}.svg`, createCoverLabelSvg(cover))}
+      onClick={() => downloadSvg(`cover-${cover.assetCode}.svg`, ownerOfficeName ? createCoverLabelSvg(cover, ownerOfficeName) : createCoverLabelSvg(cover))}
       aria-label={`โหลด QR ${cover.assetCode}`}
     >
       โหลด QR
