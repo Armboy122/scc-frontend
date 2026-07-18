@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Select } from '@/components/ui/Select'
 import { useDiscrepancies } from '@/hooks/useDiscrepancies'
+import { useOffices } from '@/hooks/useOffices'
 import { useAuth } from '@/lib/auth'
 import {
   formatDiscrepancyDate,
@@ -46,6 +47,7 @@ function DiscrepancyStatusPill({ status }: { status: DiscrepancyStatus }) {
 export default function DiscrepanciesPage() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
+  const { data: offices = [] } = useOffices(Boolean(user))
   const [operatorStatus, setOperatorStatus] = useState<DiscrepancyStatus | ''>('')
   const [adminStatus, setAdminStatus] = useState<DiscrepancyStatus | ''>('OPEN')
   const [type, setType] = useState<DiscrepancyType | ''>('')
@@ -72,7 +74,7 @@ export default function DiscrepanciesPage() {
           <p className="mt-1 text-sm text-gray-500">
             {isAdmin
               ? 'ตรวจสอบรายงานที่เปิดอยู่จากทุกสำนักงานและบันทึกวิธีปิดเรื่อง'
-              : `รายงานและติดตามข้อสังเกตของ ${user?.office?.name ?? user?.officeId ?? 'สำนักงานของคุณ'}`}
+              : `รายงานและติดตามข้อสังเกตของ ${user?.office?.name ?? offices.find((office) => office.id === user?.officeId)?.name ?? 'สำนักงานของคุณ'}`}
           </p>
         </div>
         {canRead && (

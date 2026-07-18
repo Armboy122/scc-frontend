@@ -20,7 +20,9 @@ export default function WriteNfcPage() {
   const router = useRouter()
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
-  const { data: offices = [], isLoading: isLoadingOffices } = useOffices(isAdmin)
+  // All signed-in roles may read offices. Exec/tech need this list to show
+  // their assigned office name because the auth payload only carries officeId.
+  const { data: offices = [], isLoading: isLoadingOffices } = useOffices(Boolean(user))
   const registerCover = useRegisterCover()
   const [value, setValue] = useState('')
   const [officeId, setOfficeId] = useState(user?.officeId ?? '')
@@ -190,7 +192,7 @@ export default function WriteNfcPage() {
                 disabled={isLoadingOffices || isWorking}
               />
             ) : (
-              <Input label="สำนักงานเจ้าของ" value={user?.office?.name ?? user?.officeId ?? ''} readOnly />
+              <Input label="สำนักงานเจ้าของ" value={user?.office?.name ?? offices.find((office) => office.id === user?.officeId)?.name ?? 'ไม่พบชื่อสำนักงาน'} readOnly />
             )}
 
             {!isNfcSupported && <p className="text-xs text-amber-700">การเขียน NFC ใช้ได้บน Chrome Android ผ่าน HTTPS</p>}

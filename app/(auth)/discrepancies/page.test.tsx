@@ -3,13 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Discrepancy, Role } from '@/lib/types'
 import DiscrepanciesPage from './page'
 
-const { useAuthMock, useDiscrepanciesMock } = vi.hoisted(() => ({
+const { useAuthMock, useDiscrepanciesMock, useOfficesMock } = vi.hoisted(() => ({
   useAuthMock: vi.fn(),
   useDiscrepanciesMock: vi.fn(),
+  useOfficesMock: vi.fn(),
 }))
 
 vi.mock('@/lib/auth', () => ({ useAuth: useAuthMock }))
 vi.mock('@/hooks/useDiscrepancies', () => ({ useDiscrepancies: useDiscrepanciesMock }))
+vi.mock('@/hooks/useOffices', () => ({ useOffices: useOfficesMock }))
 
 const discrepancy: Discrepancy = {
   id: 'discrepancy/1',
@@ -54,6 +56,7 @@ describe('DiscrepanciesPage role-scoped queue', () => {
       error: null,
       refetch: vi.fn(),
     })
+    useOfficesMock.mockReturnValue({ data: [discrepancy.office] })
   })
 
   it.each<Role>(['exec', 'tech'])('shows %s an own-office list and report action', (role) => {
@@ -82,5 +85,13 @@ describe('DiscrepanciesPage role-scoped queue', () => {
     render(<DiscrepanciesPage />)
 
     expect(screen.getByText(/การรายงานหรือปิดเรื่องนี้ไม่เปลี่ยนสต็อก/)).toBeInTheDocument()
+  })
+
+  it('resolves the office name from the directory when session has only officeId', () => {
+    useAuthMock.mockReturnValue({ user: { id: 'tech-1', name: 'Tech', username: 'tech', role: 'tech', officeId: 'office-1' } })
+    render(<DiscrepanciesPage />)
+
+    expect(screen.getByText(/รายงานและติดตามข้อสังเกตของ สำนักงานหนึ่ง/)).toBeInTheDocument()
+    expect(screen.queryByText(/office-1/)).not.toBeInTheDocument()
   })
 })

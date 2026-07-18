@@ -106,9 +106,17 @@ describe('NewDiscrepancyPage canonical manual report', () => {
       expect(payload).not.toHaveProperty('status')
       expect(payload).not.toHaveProperty('reportedById')
       expect(replaceMock).toHaveBeenCalledWith('/discrepancies/discrepancy-created')
-      expect(useOfficesMock).toHaveBeenCalledWith(false)
+      expect(useOfficesMock).toHaveBeenCalledWith(true)
     },
   )
+
+  it('resolves the session office ID to its name before displaying it', () => {
+    useAuthMock.mockReturnValue({ user: { id: 'tech-1', name: 'Tech', username: 'tech', role: 'tech', officeId: 'office-1' } })
+    render(<NewDiscrepancyPage />)
+
+    expect(screen.getByText(/สำนักงานหนึ่ง/)).toBeInTheDocument()
+    expect(screen.queryByText('office-1')).not.toBeInTheDocument()
+  })
 
   it('blocks equal quantities before calling the API', async () => {
     const user = userEvent.setup()

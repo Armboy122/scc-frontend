@@ -65,6 +65,14 @@ beforeEach(() => {
 afterEach(() => removeNdefReader())
 
 describe('WriteNfcPage — write and register (Flow 3)', () => {
+  it('resolves an operator office ID to the office name', () => {
+    useAuthMock.mockReturnValue({ user: { id: 'tech-1', name: 'Tech', role: 'tech', officeId: 'office-1' } })
+    render(<WriteNfcPage />)
+
+    expect(screen.getByDisplayValue('การไฟฟ้าสงขลา')).toBeInTheDocument()
+    expect(screen.queryByDisplayValue('office-1')).not.toBeInTheDocument()
+  })
+
   it('checks uniqueness, writes the tag, then registers with matching assetCode and nfcId', async () => {
     installNdefWriter()
     const user = userEvent.setup()

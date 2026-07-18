@@ -36,13 +36,15 @@ export default function NewDiscrepancyPage() {
   const { user } = useAuth()
   const createDiscrepancy = useCreateDiscrepancy()
   const isAdmin = user?.role === 'admin'
-  const officesQuery = useOffices(isAdmin)
+  // Exec/tech can read the office directory too; resolve the session officeId
+  // before rendering it so an internal ID is never shown to the user.
+  const officesQuery = useOffices(Boolean(user))
   const canReport = Boolean(
     isAdmin || (user?.officeId && (user.role === 'exec' || user.role === 'tech')),
   )
   const officeLabel = isAdmin
     ? 'เลือกสำนักงานที่พบเหตุการณ์ในแบบฟอร์ม'
-    : user?.office?.name ?? user?.officeId ?? 'ไม่พบสำนักงาน'
+    : user?.office?.name ?? officesQuery.data?.find((office) => office.id === user?.officeId)?.name ?? 'ไม่พบชื่อสำนักงาน'
   const officeOptions = useMemo(() => [...(officesQuery.data ?? [])]
     .sort((a, b) => a.name.localeCompare(b.name, 'th'))
     .map((office) => ({ value: office.id, label: office.name })), [officesQuery.data])
