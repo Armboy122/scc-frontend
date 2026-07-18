@@ -145,7 +145,7 @@ function BorrowActions({ borrow }: { borrow: Borrow }) {
     <Card>
       <h2 className="font-semibold text-gray-900">การดำเนินการ</h2>
       <p className="mt-1 text-sm text-gray-500">
-        ระบบฝั่งเซิร์ฟเวอร์จะตรวจบทบาท สำนักงาน และสถานะซ้ำก่อนเปลี่ยนข้อมูลทุกครั้ง
+        ทำรายการได้ทั้งมือถือและคอมพิวเตอร์ โดยระบบจะตรวจบทบาท สำนักงาน และสถานะซ้ำก่อนเปลี่ยนข้อมูลทุกครั้ง
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -157,6 +157,7 @@ function BorrowActions({ borrow }: { borrow: Borrow }) {
             variant={ACTION_VARIANT[permission.action]}
             loading={mutations[permission.action].isPending}
             disabled={pending}
+            fullWidth
             onClick={() => chooseAction(permission)}
           >
             {ACTION_LABEL[permission.action]}
@@ -184,6 +185,7 @@ function BorrowActions({ borrow }: { borrow: Borrow }) {
               type="button"
               variant="outline"
               disabled={pending}
+              fullWidth
               onClick={() => {
                 setSelectedAction(null)
                 setReason('')
@@ -197,6 +199,7 @@ function BorrowActions({ borrow }: { borrow: Borrow }) {
               variant={ACTION_VARIANT[selectedPermission.action]}
               loading={mutations[selectedPermission.action].isPending}
               disabled={pending}
+              fullWidth
               onClick={() => void execute(selectedPermission)}
             >
               ยืนยันการดำเนินการ

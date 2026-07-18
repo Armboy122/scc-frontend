@@ -61,7 +61,7 @@ export default function BorrowsPage() {
         <div>
           <h1 className="text-xl font-bold text-gray-900">ใบยืมฉนวน</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            ติดตามคำขอ การส่งมอบ และการคืนฉนวนระหว่างสำนักงาน
+            ทำรายการยืม ส่งมอบ และรับคืนฉนวนระหว่างสำนักงานได้จากทุกอุปกรณ์
           </p>
         </div>
         {canCreate && (
@@ -112,7 +112,7 @@ export default function BorrowsPage() {
             type="button"
             onClick={() => setStatus(item.value)}
             className={[
-              'flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
+              'flex min-h-11 flex-shrink-0 items-center px-3 rounded-full text-sm font-medium transition-colors',
               status === item.value
                 ? 'bg-pea-600 text-white'
                 : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300',
@@ -193,8 +193,8 @@ export default function BorrowsPage() {
                   <span className="truncate">ผู้ยืม: {borrow.borrowerOffice.name}</span>
                 </div>
 
-                <dl className="grid grid-cols-3 gap-2 text-sm">
-                  <div>
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm sm:grid-cols-3">
+                  <div className="col-span-2 sm:col-span-1">
                     <dt className="text-xs text-gray-500">จำนวน</dt>
                     <dd className="font-mono font-bold text-lg text-gray-900">
                       {borrow.requestedQty}

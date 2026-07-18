@@ -73,6 +73,7 @@ describe('BorrowsPage canonical list', () => {
       name: 'เปิดใบยืมจาก สำนักงานผู้ให้ยืม ไป สำนักงานผู้ยืม',
     })).toHaveAttribute('href', '/borrows/borrow-1')
     expect(screen.getByRole('link', { name: /สร้างใบยืม/ })).toHaveAttribute('href', '/borrows/new')
+    expect(screen.getByText(/ทำรายการยืม ส่งมอบ และรับคืนฉนวนระหว่างสำนักงานได้จากทุกอุปกรณ์/)).toBeInTheDocument()
     expect(useBorrowsMock).toHaveBeenCalledWith({ direction: 'in' })
   })
 

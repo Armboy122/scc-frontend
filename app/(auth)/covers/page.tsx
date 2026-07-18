@@ -2,14 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { PenLine, Plus, Radio, Search, Shield } from 'lucide-react'
+import { ChevronRight, Search, Shield } from 'lucide-react'
 import { useCovers } from '@/hooks/useCovers'
 import { useAuth } from '@/lib/auth'
 import { StatusBadge } from '@/components/ui/StatusBadge'
-import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import { CoverQrDownloadButton } from '@/components/feature/CoverQrDownloadButton'
 import { useOffices } from '@/hooks/useOffices'
 import { getCoverContextLabels } from '@/lib/coverPresentation'
 import type { CoverStatus } from '@/lib/types'
@@ -37,8 +35,6 @@ export default function CoversPage() {
     officeId: user?.role === 'admin' ? officeId || undefined : undefined,
   })
 
-  const canRegister = user?.role === 'admin' || Boolean(user?.officeId)
-
   const contextLabels = (cover: { status: CoverStatus; ownerOfficeId: string; currentOfficeId: string }) =>
     getCoverContextLabels(cover).slice(1)
   const officeName = (cover: { ownerOfficeId: string; ownerOffice?: { name: string } }) =>
@@ -49,16 +45,9 @@ export default function CoversPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">ฉนวนทั้งหมด</h1>
-          <p className="text-sm text-gray-500 mt-0.5">จัดการทะเบียนฉนวนครอบสายไฟ</p>
+          <h1 className="text-xl font-bold text-gray-900">รายการฉนวน</h1>
+          <p className="text-sm text-gray-500 mt-0.5">ดูสถานะและกดแต่ละรายการเพื่อดูประวัติการยืม–คืน</p>
         </div>
-        {canRegister && (
-          <div className="flex w-full gap-2 sm:w-auto">
-            <Button size="md" variant="outline" leftIcon={<Radio className="w-4 h-4" />} onClick={() => router.push('/covers/check-tag')} className="flex-1 sm:flex-none">ตรวจ tag</Button>
-            <Button size="md" variant="outline" leftIcon={<PenLine className="w-4 h-4" />} onClick={() => router.push('/covers/write-nfc')} className="flex-1 sm:flex-none">เขียน NFC</Button>
-            <Button size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push('/covers/register')} className="flex-1 sm:flex-none">ลงทะเบียน</Button>
-          </div>
-        )}
       </div>
 
       {/* Filters */}
@@ -116,42 +105,39 @@ export default function CoversPage() {
           {/* Mobile cards */}
           <div className="md:hidden space-y-2">
             {covers.map((cover) => (
-              <div key={cover.id} className="card-surface p-3 space-y-3 cursor-pointer" onClick={() => router.push(`/covers/${cover.id}`)}>
+              <button key={cover.id} type="button" className="card-surface w-full p-3 text-left space-y-3 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pea-500" onClick={() => router.push(`/covers/${cover.id}`)}>
                 <div className="flex items-center gap-3">
                 <Shield className="w-8 h-8 text-pea-300 flex-shrink-0" aria-hidden />
                 <div className="flex-1 min-w-0">
                   <p className="font-mono font-semibold text-sm text-gray-900">{cover.assetCode}</p>
-                  <p className="text-xs text-gray-500 truncate">{cover.qrCode}</p>
+                  <p className="text-xs text-gray-500 truncate">{officeName(cover)}</p>
                 </div>
                 <StatusBadge coverStatus={cover.status} size="sm" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
                 </div>
                 {contextLabels(cover).map((label) => (
                   <span key={label} className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">{label}</span>
                 ))}
-                <CoverQrDownloadButton cover={cover} ownerOfficeName={officeName(cover)} fullWidth />
-              </div>
+                <p className="text-xs font-medium text-pea-700">ดูประวัติยืม–คืน</p>
+              </button>
             ))}
           </div>
 
           {/* Desktop table */}
           <div className="hidden md:block card-surface overflow-x-auto">
-            <table className="w-full min-w-[900px] text-sm">
+            <table className="w-full min-w-[680px] text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">รหัสทรัพย์สิน</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">QR Code</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">NFC</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">สถานะ</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">สำนักงานเจ้าของ</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700">QR</th>
+                  <th className="text-right px-4 py-3 font-semibold text-gray-700">ประวัติ</th>
                 </tr>
               </thead>
               <tbody>
                 {covers.map((cover) => (
                   <tr key={cover.id} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer" onClick={() => router.push(`/covers/${cover.id}`)}>
                     <td className="px-4 py-3 font-mono font-medium">{cover.assetCode}</td>
-                    <td className="px-4 py-3 font-mono text-gray-600 text-xs">{cover.qrCode}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{cover.nfcId ?? '-'}</td>
                     <td className="px-4 py-3">
                       <StatusBadge coverStatus={cover.status} size="sm" />
                       {contextLabels(cover).map((label) => (
@@ -162,7 +148,7 @@ export default function CoversPage() {
                       {officeName(cover)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <CoverQrDownloadButton cover={cover} ownerOfficeName={officeName(cover)} />
+                      <span className="inline-flex items-center gap-1 text-sm font-medium text-pea-700">ดูยืม–คืน <ChevronRight className="h-4 w-4" aria-hidden /></span>
                     </td>
                   </tr>
                 ))}
@@ -174,18 +160,6 @@ export default function CoversPage() {
             แสดง {covers.length} รายการ
           </p>
         </>
-      )}
-
-      {/* Batch register link */}
-      {canRegister && (
-        <div className="mt-6 pt-4 border-t border-gray-200">
-          <button
-            onClick={() => router.push('/covers/register/batch')}
-            className="text-sm text-pea-600 hover:text-pea-700 font-medium"
-          >
-            ลงทะเบียนหลายรายการ →
-          </button>
-        </div>
       )}
     </div>
   )

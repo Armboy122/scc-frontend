@@ -104,6 +104,7 @@ describe('BorrowDetailPage canonical contract', () => {
     expect(screen.getByText('PEA-001')).toBeInTheDocument()
     expect(screen.getByText('ใช้กับงานเร่งด่วน')).toBeInTheDocument()
     expect(screen.queryByText(/SCC:/)).not.toBeInTheDocument()
+    expect(screen.getByText(/ทำรายการได้ทั้งมือถือและคอมพิวเตอร์/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'อนุมัติคำขอ' }))
     await waitFor(() => expect(actionMutations.approve.mutateAsync).toHaveBeenCalledWith({

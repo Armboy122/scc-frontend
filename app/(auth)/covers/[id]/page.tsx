@@ -14,6 +14,20 @@ const formatDate = (value?: string) => value
   ? new Date(value).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Bangkok' })
   : 'ยังไม่กำหนด'
 
+const BORROW_ACTION_LABELS: Record<string, string> = {
+  CREATE: 'สร้างคำขอยืม',
+  APPROVE: 'อนุมัติการยืม',
+  REJECT: 'ปฏิเสธคำขอยืม',
+  CANCEL: 'ยกเลิกคำขอยืม',
+  ACTIVATE: 'ส่งมอบฉนวน',
+  MARK_OVERDUE: 'เกินกำหนดคืน',
+  RETURN: 'รับคืนฉนวน',
+}
+
+function borrowActionLabel(action: string) {
+  return BORROW_ACTION_LABELS[action] ?? action
+}
+
 function officeName(office: Office | undefined, id: string, offices: Office[]) {
   return office?.name ?? offices.find((item) => item.id === id)?.name ?? 'ไม่ระบุสำนักงาน'
 }
@@ -88,7 +102,7 @@ export default function CoverDetailPage({ params }: { params: Promise<{ id: stri
 
       {activeBorrow && <Card><h2 className="flex items-center gap-2 font-semibold"><CalendarDays className="h-4 w-4 text-pea-700" /> การยืมระหว่างสำนักงาน</h2><p className="mt-2 text-sm text-gray-700">สถานะ {activeBorrow.status} · กำหนดคืน {formatDate(activeBorrow.returnDate)}</p></Card>}
 
-      <Card><h2 className="font-semibold">ประวัติการเปลี่ยนแปลง</h2>{lifecycleHistory.length === 0 ? <p className="mt-2 text-sm text-gray-500">ยังไม่มีประวัติการยืม–คืน</p> : <ol className="mt-3 space-y-3">{lifecycleHistory.map((event, index) => <li key={`${event.action}-${event.createdAt}-${index}`} className="border-l-2 border-pea-200 pl-3 text-sm"><p className="font-medium">{event.action}</p><p className="text-gray-500">{formatDate(event.createdAt)} · {event.actorName ?? 'ระบบ'}</p>{event.reason && <p className="mt-1 text-gray-600">{event.reason}</p>}</li>)}</ol>}</Card>
+      <Card><div className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-pea-700" aria-hidden /><div><h2 className="font-semibold">ประวัติยืม–คืน</h2><p className="text-xs text-gray-500">ลำดับการยืม การส่งมอบ และการคืนของฉนวนชิ้นนี้</p></div></div>{lifecycleHistory.length === 0 ? <p className="mt-3 text-sm text-gray-500">ยังไม่มีประวัติการยืม–คืน</p> : <ol className="mt-4 space-y-3">{lifecycleHistory.map((event, index) => <li key={`${event.action}-${event.createdAt}-${index}`} className="border-l-2 border-pea-200 pl-3 text-sm"><p className="font-medium">{borrowActionLabel(event.action)}</p><p className="text-gray-500">{formatDate(event.createdAt)} · {event.actorName ?? 'ระบบ'}</p>{event.reason && <p className="mt-1 text-gray-600">{event.reason}</p>}</li>)}</ol>}</Card>
     </div>
   )
 }

@@ -177,6 +177,14 @@ export function isPhaseRouteEnabled(
   pathname: string,
   flags: PhaseFeatureFlags = PHASE_FEATURE_FLAGS,
 ): boolean {
+  // The cover area is a read-only inventory view. NFC handling and
+  // registration are intentionally unavailable from both navigation and
+  // direct URLs until an operational role needs them again.
+  if (
+    pathname === '/covers/check-tag' || pathname.startsWith('/covers/check-tag/')
+    || pathname === '/covers/write-nfc' || pathname.startsWith('/covers/write-nfc/')
+    || pathname === '/covers/register' || pathname.startsWith('/covers/register/')
+  ) return false
   // These administration modules are intentionally parked until the next
   // operational phase. Keep direct URLs from exposing unfinished screens.
   if (
