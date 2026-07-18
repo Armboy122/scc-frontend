@@ -42,7 +42,8 @@ export default function RegisterCoverPage() {
   const router = useRouter()
   const registerCover = useRegisterCover()
   const isAdmin = user?.role === 'admin'
-  const { data: offices = [], isLoading: isLoadingOffices } = useOffices(isAdmin)
+  const canChooseOwnerOffice = isAdmin || user?.role === 'tech'
+  const { data: offices = [], isLoading: isLoadingOffices } = useOffices(canChooseOwnerOffice)
   const [createdCover, setCreatedCover] = useState<Cover | null>(null)
   const [isNfcSupported, setIsNfcSupported] = useState(false)
   const [isScanningNfc, setIsScanningNfc] = useState(false)
@@ -66,10 +67,10 @@ export default function RegisterCoverPage() {
   const ownerOfficeId = watch('ownerOfficeId') ?? ''
 
   useEffect(() => {
-    if (!isAdmin && user?.officeId) {
+    if (!canChooseOwnerOffice && user?.officeId) {
       setValue('ownerOfficeId', user.officeId)
     }
-  }, [isAdmin, setValue, user?.officeId])
+  }, [canChooseOwnerOffice, setValue, user?.officeId])
 
   useEffect(() => {
     setIsNfcSupported(typeof (window as unknown as { NDEFReader?: unknown }).NDEFReader === 'function')
@@ -122,7 +123,7 @@ export default function RegisterCoverPage() {
       const payload = {
         assetCode: data.assetCode.trim(),
         ...(data.nfcId.trim() ? { nfcId: data.nfcId.trim() } : {}),
-        ownerOfficeId: isAdmin ? data.ownerOfficeId : user?.officeId ?? data.ownerOfficeId,
+        ownerOfficeId: canChooseOwnerOffice ? data.ownerOfficeId : user?.officeId ?? data.ownerOfficeId,
       }
       const res = await registerCover.mutateAsync(payload)
       if (res.data) {
@@ -157,7 +158,7 @@ export default function RegisterCoverPage() {
       {createdCover && (
         <Card className="mb-4 text-center">
           <Image
-            src={svgToDataUrl(createCoverLabelSvg(createdCover, isAdmin ? offices.find((office) => office.id === createdCover.ownerOfficeId)?.name : user?.office?.name))}
+            src={svgToDataUrl(createCoverLabelSvg(createdCover, canChooseOwnerOffice ? offices.find((office) => office.id === createdCover.ownerOfficeId)?.name : user?.office?.name))}
             alt={`QR Code ${createdCover.assetCode}`}
             width={224}
             height={224}
@@ -171,7 +172,7 @@ export default function RegisterCoverPage() {
               variant="outline"
               className="flex-1"
               leftIcon={<Download className="w-4 h-4" />}
-              onClick={() => downloadSvg(`cover-${createdCover.assetCode}.svg`, createCoverLabelSvg(createdCover, isAdmin ? offices.find((office) => office.id === createdCover.ownerOfficeId)?.name : user?.office?.name))}
+              onClick={() => downloadSvg(`cover-${createdCover.assetCode}.svg`, createCoverLabelSvg(createdCover, canChooseOwnerOffice ? offices.find((office) => office.id === createdCover.ownerOfficeId)?.name : user?.office?.name))}
             >
               โหลด QR
             </Button>
@@ -225,7 +226,7 @@ export default function RegisterCoverPage() {
             readOnly
           />
 
-          {isAdmin ? (
+          {canChooseOwnerOffice ? (
             <Select
               label="สำนักงานเจ้าของ"
               placeholder={isLoadingOffices ? 'กำลังโหลดสำนักงาน…' : 'เลือกสำนักงาน'}

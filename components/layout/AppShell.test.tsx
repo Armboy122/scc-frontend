@@ -105,10 +105,10 @@ describe('AppShell navigation', () => {
     ]))
   })
 
-  it('blocks direct-only cover tools and Phase 2/3 routes while their flags are off', () => {
-    expect(isPhaseRouteEnabled('/covers/check-tag', FLAGS_OFF)).toBe(false)
-    expect(isPhaseRouteEnabled('/covers/write-nfc', FLAGS_OFF)).toBe(false)
-    expect(isPhaseRouteEnabled('/covers/register/batch', FLAGS_OFF)).toBe(false)
+  it('keeps NFC tools available while Phase 2/3 routes remain flag-gated', () => {
+    expect(isPhaseRouteEnabled('/covers/check-tag', FLAGS_OFF)).toBe(true)
+    expect(isPhaseRouteEnabled('/covers/write-nfc', FLAGS_OFF)).toBe(true)
+    expect(isPhaseRouteEnabled('/covers/register/batch', FLAGS_OFF)).toBe(true)
     expect(isPhaseRouteEnabled('/covers/cover-1', FLAGS_OFF)).toBe(true)
     expect(isPhaseRouteEnabled('/borrows/borrow-1', FLAGS_OFF)).toBe(false)
     expect(isPhaseRouteEnabled('/discrepancies/discrepancy-1', FLAGS_OFF)).toBe(false)

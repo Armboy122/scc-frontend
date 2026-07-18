@@ -20,9 +20,10 @@ export default function WriteNfcPage() {
   const router = useRouter()
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
+  const canChooseOwnerOffice = isAdmin || user?.role === 'tech'
   // All signed-in roles may read offices. Exec/tech need this list to show
   // their assigned office name because the auth payload only carries officeId.
-  const { data: offices = [], isLoading: isLoadingOffices } = useOffices(Boolean(user))
+  const { data: offices = [], isLoading: isLoadingOffices } = useOffices(canChooseOwnerOffice)
   const registerCover = useRegisterCover()
   const [value, setValue] = useState('')
   const [officeId, setOfficeId] = useState(user?.officeId ?? '')
@@ -32,8 +33,8 @@ export default function WriteNfcPage() {
   const [createdCover, setCreatedCover] = useState<Cover | null>(null)
 
   useEffect(() => {
-    if (!isAdmin && user?.officeId) setOfficeId(user.officeId)
-  }, [isAdmin, user?.officeId])
+    if (!canChooseOwnerOffice && user?.officeId) setOfficeId(user.officeId)
+  }, [canChooseOwnerOffice, user?.officeId])
 
   useEffect(() => {
     setIsNfcSupported(typeof (window as unknown as { NDEFReader?: unknown }).NDEFReader === 'function')
@@ -181,7 +182,7 @@ export default function WriteNfcPage() {
               hint="ไม่กำหนดรูปแบบ; ระบบจะปฏิเสธข้อความที่มีอยู่แล้วในทะเบียน"
             />
 
-            {isAdmin ? (
+            {canChooseOwnerOffice ? (
               <Select
                 label="สำนักงานเจ้าของ"
                 required

@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronRight, Search, Shield } from 'lucide-react'
+import { ChevronRight, Plus, Radio, Search, Shield } from 'lucide-react'
 import { useCovers } from '@/hooks/useCovers'
 import { useAuth } from '@/lib/auth'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
+import { Button } from '@/components/ui/Button'
 import { useOffices } from '@/hooks/useOffices'
 import { getCoverContextLabels } from '@/lib/coverPresentation'
 import type { CoverStatus } from '@/lib/types'
@@ -22,6 +23,7 @@ const STATUS_OPTIONS: { label: string; value: CoverStatus | 'ALL' }[] = [
 export default function CoversPage() {
   const { user } = useAuth()
   const router = useRouter()
+  const canManageNfc = user?.role === 'admin' || user?.role === 'tech'
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<CoverStatus | 'ALL'>('ALL')
   const [officeId, setOfficeId] = useState('')
@@ -48,6 +50,10 @@ export default function CoversPage() {
           <h1 className="text-xl font-bold text-gray-900">รายการฉนวน</h1>
           <p className="text-sm text-gray-500 mt-0.5">ดูสถานะและกดแต่ละรายการเพื่อดูประวัติการยืม–คืน</p>
         </div>
+        {canManageNfc && <div className="flex gap-2">
+          <Button type="button" variant="outline" size="sm" leftIcon={<Radio className="h-4 w-4" />} onClick={() => router.push('/covers/check-tag')}>ตรวจ NFC</Button>
+          <Button type="button" size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => router.push('/covers/write-nfc')}>เพิ่ม NFC</Button>
+        </div>}
       </div>
 
       {/* Filters */}

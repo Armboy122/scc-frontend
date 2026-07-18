@@ -45,7 +45,8 @@ export default function BatchRegisterPage() {
   const router = useRouter()
   const batchRegister = useBatchRegisterCovers()
   const isAdmin = user?.role === 'admin'
-  const { data: offices = [] } = useOffices(isAdmin)
+  const canChooseOwnerOffice = isAdmin || user?.role === 'tech'
+  const { data: offices = [] } = useOffices(canChooseOwnerOffice)
   const [officeId, setOfficeId] = useState(user?.officeId ?? '')
   const [assetCodesText, setAssetCodesText] = useState('')
   const [rows, setRows] = useState<RowData[]>([])
@@ -65,7 +66,7 @@ export default function BatchRegisterPage() {
     })
   }
 
-  useEffect(() => { if (user?.role !== 'admin' && user?.officeId) setOfficeId(user.officeId) }, [user])
+  useEffect(() => { if (!canChooseOwnerOffice && user?.officeId) setOfficeId(user.officeId) }, [canChooseOwnerOffice, user])
   useEffect(() => { setIsNfcSupported(typeof (window as unknown as { NDEFReader?: unknown }).NDEFReader === 'function') }, [])
 
   const prepareRows = () => {
@@ -134,9 +135,9 @@ export default function BatchRegisterPage() {
   return <div className="page-padding mx-auto max-w-4xl">
     <div className="mb-6 flex items-center gap-3"><button onClick={() => router.back()} className="-ml-2 rounded-xl p-2 transition-colors hover:bg-gray-100" aria-label="ย้อนกลับ"><ArrowLeft className="h-5 w-5 text-gray-600" /></button><div><h1 className="text-xl font-bold text-gray-900">ลงทะเบียนหลายรายการด้วย NFC</h1><p className="text-sm text-gray-500">เตรียมรหัสทรัพย์สิน แล้วเขียนลง NFC tag ว่างทีละใบตามลำดับ</p></div></div>
 
-    <Card className="mb-5">{isAdmin ? <OwnerOfficeSelector officeId={officeId} submitted={submitted} onChange={setOfficeId} /> : <Input label="สำนักงานเจ้าของ" value={user?.office?.name ?? 'ไม่พบสำนักงานในบัญชี'} readOnly />}</Card>
+    <Card className="mb-5">{canChooseOwnerOffice ? <OwnerOfficeSelector officeId={officeId} submitted={submitted} onChange={setOfficeId} /> : <Input label="สำนักงานเจ้าของ" value={user?.office?.name ?? 'ไม่พบสำนักงานในบัญชี'} readOnly />}</Card>
 
-    {createdCovers.length > 0 && <Card className="mb-5"><div className="mb-3 flex items-center justify-between gap-3"><div><h2 className="font-semibold text-gray-900">ลงทะเบียนเรียบร้อย</h2><p className="text-sm text-gray-500">{createdCovers.length} รายการ</p></div><Button type="button" variant="outline" onClick={() => setCreatedCovers([])}>ลงชุดใหม่</Button></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">{createdCovers.map((cover) => { const ownerOfficeName = isAdmin ? offices.find((office) => office.id === cover.ownerOfficeId)?.name : user?.office?.name; return <div key={cover.id} className="rounded-lg border border-gray-200 p-2 text-center"><Image src={svgToDataUrl(createCoverLabelSvg(cover, ownerOfficeName))} alt={`QR Code ${cover.assetCode}`} width={240} height={240} unoptimized className="h-auto w-full" /><button type="button" onClick={() => downloadSvg(`cover-${cover.assetCode}.svg`, createCoverLabelSvg(cover, ownerOfficeName))} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-pea-700 hover:text-pea-800"><Download className="h-3.5 w-3.5" />โหลด QR</button></div>})}</div></Card>}
+    {createdCovers.length > 0 && <Card className="mb-5"><div className="mb-3 flex items-center justify-between gap-3"><div><h2 className="font-semibold text-gray-900">ลงทะเบียนเรียบร้อย</h2><p className="text-sm text-gray-500">{createdCovers.length} รายการ</p></div><Button type="button" variant="outline" onClick={() => setCreatedCovers([])}>ลงชุดใหม่</Button></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">{createdCovers.map((cover) => { const ownerOfficeName = canChooseOwnerOffice ? offices.find((office) => office.id === cover.ownerOfficeId)?.name : user?.office?.name; return <div key={cover.id} className="rounded-lg border border-gray-200 p-2 text-center"><Image src={svgToDataUrl(createCoverLabelSvg(cover, ownerOfficeName))} alt={`QR Code ${cover.assetCode}`} width={240} height={240} unoptimized className="h-auto w-full" /><button type="button" onClick={() => downloadSvg(`cover-${cover.assetCode}.svg`, createCoverLabelSvg(cover, ownerOfficeName))} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-pea-700 hover:text-pea-800"><Download className="h-3.5 w-3.5" />โหลด QR</button></div>})}</div></Card>}
 
     <Card className="mb-4"><div className="flex items-start gap-3"><Tag className="mt-0.5 h-5 w-5 shrink-0 text-pea-700" /><div><h2 className="font-semibold text-gray-900">1. เตรียมรหัสทรัพย์สิน</h2><p className="mt-1 text-sm text-gray-600">วางรหัสทีละบรรทัดหรือคั่นด้วย comma ระบบจะสร้างลำดับให้ก่อนเริ่มเขียน NFC</p></div></div><div className="mt-4"><Textarea label="รหัสทรัพย์สิน" rows={7} value={assetCodesText} onChange={(event) => setAssetCodesText(event.target.value)} placeholder={'PEA-0001\nPEA-0002\nPEA-0003'} /></div><div className="mt-3"><Button type="button" onClick={prepareRows}>เตรียมรายการ</Button></div>{scanMessage && rows.length === 0 && <p role="status" className="mt-3 text-sm text-red-700">{scanMessage}</p>}</Card>
 
