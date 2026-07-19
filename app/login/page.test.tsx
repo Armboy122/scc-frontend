@@ -28,6 +28,12 @@ describe('LoginPage', () => {
     expect(container.querySelector('form')).toHaveAttribute('method', 'post')
   })
 
+  it('provides a 44px password visibility toggle for touch input', () => {
+    render(<LoginPage />)
+
+    expect(screen.getByRole('button', { name: 'แสดงรหัสผ่าน' })).toHaveClass('h-11', 'w-11')
+  })
+
   it('surfaces backend rate-limit wait time without replaying credentials', async () => {
     const user = userEvent.setup()
     loginMock.mockRejectedValueOnce(

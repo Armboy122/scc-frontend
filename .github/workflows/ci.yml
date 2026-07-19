@@ -41,3 +41,18 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+      - name: Install Chromium for browser quality gates
+        run: npx playwright install --with-deps chromium
+
+      - name: Performance gate (Lighthouse)
+        run: npm run test:lighthouse
+
+      - name: Accessibility gate (axe-core)
+        run: npm run test:a11y
+
+      - name: Interaction latency gate (INP)
+        run: npm run test:vitals
+
+      - name: Mobile device fallback checks
+        run: npm run test:device-fallbacks

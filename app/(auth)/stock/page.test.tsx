@@ -56,4 +56,16 @@ describe('StockPage', () => {
     rerender(<StockPage />)
     expect(screen.getByText('ยังไม่มีข้อมูลสต็อก')).toBeInTheDocument()
   })
+
+  it('uses an alert tone when no stock is available for a work order', () => {
+    useStockMock.mockReturnValue({
+      data: [{ ...reconciledStock, availableForWorkOrder: 0 }],
+      isLoading: false,
+      error: null,
+    })
+
+    render(<StockPage />)
+
+    expect(screen.getAllByText('0')[0]).toHaveClass('text-red-700')
+  })
 })

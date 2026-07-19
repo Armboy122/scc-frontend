@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { User } from 'lucide-react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -52,7 +53,7 @@ describe('AppShell navigation', () => {
     useUnreadNotificationCountMock.mockReturnValue({ data: 7 })
   })
 
-  it('keeps every allowed Phase 1 route reachable on mobile', () => {
+  it('uses four persistent mobile destinations so the fifth slot can be More', () => {
     const icon = User
     const items: NavItem[] = [
       { href: '/', label: 'ใบงาน', icon },
@@ -65,11 +66,9 @@ describe('AppShell navigation', () => {
 
     expect(getMobileNavItems(items).map((item) => item.href)).toEqual([
       '/',
-      '/dashboard',
       '/stock',
       '/covers',
       '/notifications',
-      '/profile',
     ])
   })
 
@@ -131,6 +130,20 @@ describe('AppShell navigation', () => {
     expect(screen.queryByText('ใบยืม')).not.toBeInTheDocument()
     expect(screen.queryByText('ข้อคลาดเคลื่อน')).not.toBeInTheDocument()
     expect(screen.getByText('content')).toBeInTheDocument()
+  })
+
+  it('keeps dashboard and profile reachable from the mobile More menu', async () => {
+    const user = userEvent.setup()
+    render(<AppShell><p>content</p></AppShell>)
+
+    const more = screen.getByRole('button', { name: 'เมนูเพิ่มเติม' })
+    expect(more).toHaveAttribute('aria-expanded', 'false')
+    await user.click(more)
+
+    expect(more).toHaveAttribute('aria-expanded', 'true')
+    const menu = screen.getByRole('region', { name: 'เมนูเพิ่มเติม' })
+    expect(within(menu).getByRole('link', { name: 'แดชบอร์ด' })).toBeInTheDocument()
+    expect(within(menu).getByRole('link', { name: 'โปรไฟล์' })).toBeInTheDocument()
   })
 
   it('redirects and renders no Phase 2 discrepancy content while the flag is off', async () => {

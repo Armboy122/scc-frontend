@@ -10,6 +10,10 @@
     "test": "npm run type-check && npm run test:unit",
     "test:unit": "NODE_ENV=test vitest run",
     "test:e2e": "playwright test --project=chromium",
+    "test:a11y": "playwright test e2e/accessibility.spec.ts --project=chromium",
+    "test:vitals": "playwright test e2e/web-vitals.spec.ts --project=chromium",
+    "test:device-fallbacks": "playwright test e2e/device-fallbacks.spec.ts --project=mobile-chromium",
+    "test:lighthouse": "lhci autorun",
     "qa:responsive": "playwright test --project=responsive",
     "type-check": "tsc --noEmit"
   },
@@ -27,6 +31,8 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.61.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

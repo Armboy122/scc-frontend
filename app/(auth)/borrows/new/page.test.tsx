@@ -118,10 +118,11 @@ describe('NewBorrowPage canonical request', () => {
     renderPage({ requestedQty: '4', returnDate: '2099-08-31' })
 
     const quantity = await screen.findByLabelText(/จำนวนที่ขอ/)
-    const returnDate = screen.getByLabelText(/กำหนดคืน/)
     const lender = screen.getByLabelText(/สำนักงานผู้ให้ยืม/)
     expect(quantity).toHaveValue(4)
-    expect(returnDate).toHaveValue('2099-08-31')
+    expect(screen.getByLabelText('กำหนดคืน วัน')).toHaveValue('31')
+    expect(screen.getByLabelText('กำหนดคืน เดือน')).toHaveValue('8')
+    expect(screen.getByLabelText('กำหนดคืน ปี พ.ศ.')).toHaveValue('2642')
     expect(screen.queryByRole('option', { name: /สำนักงานไม่มีคงเหลือ/ })).not.toBeInTheDocument()
 
     await user.selectOptions(lender, 'lender-high')

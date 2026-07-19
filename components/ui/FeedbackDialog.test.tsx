@@ -33,6 +33,7 @@ describe('FeedbackDialog', () => {
     const close = screen.getByRole('button', { name: 'ปิด popup' })
     expect(dialog).toHaveAttribute('aria-describedby')
     expect(confirm).toHaveFocus()
+    expect(close).toHaveClass('h-11', 'w-11')
 
     await user.tab()
     expect(close).toHaveFocus()

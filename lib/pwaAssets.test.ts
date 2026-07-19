@@ -43,8 +43,8 @@ describe('PWA public assets', () => {
       start_url: '/',
       scope: '/',
       display: 'standalone',
-      theme_color: '#6d28a8',
-      background_color: '#1e0a30',
+      theme_color: '#FFFFFF',
+      background_color: '#FFFFFF',
     })
     expect(manifest.icons).toEqual([
       {
@@ -103,7 +103,7 @@ describe('PWA public assets', () => {
 
   it('keeps the viewport zoomable for accessibility', () => {
     expect(PWA_VIEWPORT).toEqual({
-      themeColor: '#6d28a8',
+      themeColor: '#FFFFFF',
       width: 'device-width',
       initialScale: 1,
     })
