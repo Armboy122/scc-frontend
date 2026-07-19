@@ -16,6 +16,7 @@ import { useAuth } from '@/lib/auth'
 import { Card } from '@/components/ui/Card'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import type { DashboardSummary, WorkOrder } from '@/lib/types'
+import { formatThaiDate } from '@/lib/thaiDate'
 
 interface SummaryCardProps {
   label: string
@@ -54,9 +55,7 @@ function timestamp(iso?: string): number {
 }
 
 function formatDate(iso?: string): string {
-  const value = timestamp(iso)
-  if (value === Number.MAX_SAFE_INTEGER) return 'ยังไม่กำหนด'
-  return new Date(value).toLocaleDateString('th-TH')
+  return formatThaiDate(iso)
 }
 
 function totalStock(summary: DashboardSummary, field: 'inStock' | 'installed'): number {
@@ -161,7 +160,7 @@ export default function DashboardPage() {
         <div className="py-16 text-center">
           <Package className="mx-auto mb-3 h-12 w-12 text-gray-300" aria-hidden />
           <p className="font-medium text-gray-500">ยังไม่มีข้อมูลสำหรับสรุป</p>
-          <p className="mt-1 text-sm text-gray-400">เมื่อมีสต็อกหรือใบงาน ภาพรวมจะแสดงที่นี่</p>
+          <p className="mt-1 text-sm text-gray-500">เมื่อมีสต็อกหรือใบงาน ภาพรวมจะแสดงที่นี่</p>
         </div>
       )}
 

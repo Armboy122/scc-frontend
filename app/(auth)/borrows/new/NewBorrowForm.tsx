@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ArrowLeft, ArrowRight, PackageCheck, RefreshCw, ShieldAlert } from 'lucide-react'
@@ -21,6 +21,7 @@ import { useBorrowAvailability, useCreateBorrow } from '@/hooks/useBorrows'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
+import { ThaiDatePicker } from '@/components/ui/ThaiDatePicker'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
 
@@ -77,6 +78,7 @@ export function NewBorrowForm({ query }: { query: BorrowSearchParams }) {
     register,
     handleSubmit,
     watch,
+    control,
     setError,
     clearErrors,
     formState: { errors, isSubmitting },
@@ -228,15 +230,11 @@ export function NewBorrowForm({ query }: { query: BorrowSearchParams }) {
             })}
           />
 
-          <Input
-            label="กำหนดคืน"
-            type="date"
-            min={bangkokTodayDateInput()}
-            required
-            error={errors.returnDate?.message}
-            hint="ระบบจะส่งเป็นเวลา 23:59:59 น. ตามเวลาประเทศไทย"
-            {...register('returnDate')}
-          />
+          <Controller name="returnDate" control={control} render={({ field }) => (
+            <ThaiDatePicker label="กำหนดคืน" required value={field.value} onChange={field.onChange}
+              min={bangkokTodayDateInput()} error={errors.returnDate?.message}
+              hint="เลือกเป็น พ.ศ. แต่ระบบจะส่งเป็นเวลา 23:59:59 น. ตามเวลาประเทศไทย" />
+          )} />
 
           <Textarea
             label="หมายเหตุ"

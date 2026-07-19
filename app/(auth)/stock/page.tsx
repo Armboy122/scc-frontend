@@ -10,6 +10,12 @@ function officeDisplayName(stock: StockSummary) {
   return stock.office?.name ?? 'ไม่พบชื่อสำนักงาน'
 }
 
+function availabilityTone(available: number) {
+  if (available === 0) return { surface: 'bg-red-50', value: 'text-red-700' }
+  if (available <= 5) return { surface: 'bg-orange-50', value: 'text-orange-700' }
+  return { surface: 'bg-green-50', value: 'text-green-700' }
+}
+
 export default function StockPage() {
   const { data: stockList = [], isLoading, error } = useStock()
 
@@ -48,16 +54,19 @@ export default function StockPage() {
           <div className="md:hidden space-y-3">
             {stockList.map((stock) => (
               <Card key={stock.officeId}>
+                {(() => {
+                  const tone = availabilityTone(stock.availableForWorkOrder)
+                  return <>
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="font-semibold text-gray-900">
                     {officeDisplayName(stock)}
                   </h2>
                   <StockBadge count={stock.total} label="อยู่กับสำนักงาน" />
                 </div>
-                <dl className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="col-span-2 bg-green-50 rounded-lg p-2.5 text-center">
+                <dl className="grid grid-cols-3 gap-2 text-sm">
+                  <div className={["col-span-3 rounded-lg p-2.5 text-center", tone.surface].join(' ')}>
                     <dt className="text-xs text-gray-500 mb-1">พร้อมสร้างใบงาน</dt>
-                    <dd className="font-bold text-green-700 text-lg tabular-nums">{stock.availableForWorkOrder}</dd>
+                    <dd className={["font-bold text-lg tabular-nums", tone.value].join(' ')}>{stock.availableForWorkOrder}</dd>
                     <dd className="mt-1 text-xs text-gray-500">
                       ในคลังจริง {stock.inStock} · กันใบงาน {stock.reservedPlanned} · กันให้ยืม {stock.reservedBorrow}
                     </dd>
@@ -75,6 +84,8 @@ export default function StockPage() {
                     <dd className="font-bold text-violet-700 text-lg tabular-nums">{stock.onLoanIn}</dd>
                   </div>
                 </dl>
+                  </>
+                })()}
               </Card>
             ))}
           </div>
@@ -105,7 +116,7 @@ export default function StockPage() {
                       {officeDisplayName(stock)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className="font-bold text-green-700 tabular-nums">{stock.availableForWorkOrder}</span>
+                      <span className={["font-bold tabular-nums", availabilityTone(stock.availableForWorkOrder).value].join(' ')}>{stock.availableForWorkOrder}</span>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">
                       {stock.inStock}
@@ -135,7 +146,7 @@ export default function StockPage() {
               <tfoot>
                 <tr className="bg-gray-50 border-t border-gray-200 font-semibold">
                   <td className="px-4 py-3 text-gray-700">รวมทั้งหมด</td>
-                  <td className="px-4 py-3 text-right text-green-700 tabular-nums">
+                  <td className={['px-4 py-3 text-right tabular-nums', availabilityTone(stockList.reduce((s, r) => s + r.availableForWorkOrder, 0)).value].join(' ')}>
                     {stockList.reduce((s, r) => s + r.availableForWorkOrder, 0)}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">

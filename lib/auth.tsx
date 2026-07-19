@@ -11,24 +11,17 @@ import React, {
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { api } from './api'
-import { clearAllTokens, getRefreshToken, replaceSessionTokens } from './tokenStore'
+import { clearAllTokens, replaceSessionToken } from './tokenStore'
 import type { ApiResponse, LoginRequest, RefreshResponse, User } from './types'
 
 // React Strict Mode intentionally replays effects in development. Reusing the
 // same startup request is mandatory because refresh tokens are single-use and
 // the backend correctly treats a duplicate rotation attempt as a replay.
-let sessionRestoreRequest: {
-  refreshToken: string
-  response: Promise<ApiResponse<RefreshResponse>>
-} | null = null
+let sessionRestoreRequest: Promise<ApiResponse<RefreshResponse>> | null = null
 
-function restoreSessionOnce(refreshToken: string): Promise<ApiResponse<RefreshResponse>> {
-  if (sessionRestoreRequest?.refreshToken === refreshToken) {
-    return sessionRestoreRequest.response
-  }
-
-  const response = api.post<RefreshResponse>('/auth/refresh', { refreshToken })
-  const request = { refreshToken, response }
+function restoreSessionOnce(): Promise<ApiResponse<RefreshResponse>> {
+  if (sessionRestoreRequest) return sessionRestoreRequest
+  const request = api.post<RefreshResponse>('/auth/refresh')
   sessionRestoreRequest = request
 
   const releaseRequest = () => {
@@ -39,9 +32,9 @@ function restoreSessionOnce(refreshToken: string): Promise<ApiResponse<RefreshRe
       if (sessionRestoreRequest === request) sessionRestoreRequest = null
     }, 0)
   }
-  void response.then(releaseRequest, releaseRequest)
+  void request.then(releaseRequest, releaseRequest)
 
-  return response
+  return request
 }
 
 // ─── Context types ────────────────────────────────────────────────────────────
@@ -76,15 +69,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     )
 
     async function restoreSession() {
-      const refreshToken = getRefreshToken()
-      if (!refreshToken) {
-        if (isCurrentRestore()) setIsLoading(false)
-        return
-      }
       try {
-        const res = await restoreSessionOnce(refreshToken)
+        const res = await restoreSessionOnce()
         if (isCurrentRestore() && res.data) {
-          replaceSessionTokens(res.data.accessToken, res.data.refreshToken)
+          replaceSessionToken(res.data.accessToken)
           setUser(res.data.user)
         }
       } catch {
@@ -121,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // prevents a delayed refresh result from overwriting the explicit login.
     const loginOperation = ++authOperationRef.current
     try {
-      const res = await api.post<{ accessToken: string; refreshToken: string; user: User }>(
+      const res = await api.post<{ accessToken: string; user: User }>(
         '/auth/login',
         creds,
       )
@@ -131,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // user id. Clear the previous identity's server state before exposing a
       // new session so cached office/role data can never flash across users.
       queryClient.clear()
-      replaceSessionTokens(res.data.accessToken, res.data.refreshToken)
+      replaceSessionToken(res.data.accessToken)
       setUser(res.data.user)
     } finally {
       if (authOperationRef.current === loginOperation) setIsLoading(false)
@@ -139,13 +127,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [queryClient])
 
   const logout = useCallback(async () => {
-    const refreshToken = getRefreshToken()
     // Start revocation while the current access token is still available for
     // the request headers, then end the local session immediately. Logout must
     // not leave sensitive screens/cache visible while the network is slow.
     const revokeRequest = api.post(
       '/auth/logout',
-      refreshToken ? { refreshToken } : undefined,
+      undefined,
     )
     ++authOperationRef.current
     queryClient.clear()

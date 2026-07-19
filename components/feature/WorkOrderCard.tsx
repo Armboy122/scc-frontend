@@ -1,10 +1,12 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Calendar, MapPin, Package, Phone, Route, Wrench } from 'lucide-react'
 import { useStartRemoval } from '@/hooks/useWorkOrders'
 import { useAuth } from '@/lib/auth'
 import { getWorkOrderDisplayStatus } from '@/lib/workOrderDisplayStatus'
+import { formatThaiDate } from '@/lib/thaiDate'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Button } from '@/components/ui/Button'
 import type { WorkOrder } from '@/lib/types'
@@ -14,10 +16,7 @@ interface WorkOrderCardProps {
 }
 
 function formatDate(iso?: string): string {
-  if (!iso) return 'ยังไม่กำหนด'
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return 'ยังไม่กำหนด'
-  return date.toLocaleDateString('th-TH', {
+  return formatThaiDate(iso, {
     day: '2-digit',
     month: 'short',
     year: '2-digit',
@@ -46,8 +45,7 @@ export function WorkOrderCard({ order }: WorkOrderCardProps) {
     : null
   const shouldShowNavigation = Boolean(mapsHref && (displayStatus === 'DUE_TODAY' || displayStatus === 'OVERDUE'))
 
-  const handlePrimaryAction = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation()
+  const handlePrimaryAction = async () => {
     if (canStartInstall) {
       router.push(`/workorders/${order.id}/install`)
       return
@@ -63,20 +61,21 @@ export function WorkOrderCard({ order }: WorkOrderCardProps) {
     }
   }
 
-  const handleNavigate = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.stopPropagation()
-  }
-
   return (
     <article
-      onClick={() => router.push(`/workorders/${order.id}`)}
       className={[
-        'card-surface p-4 cursor-pointer',
-        'transition-shadow duration-150 hover:shadow-card-hover active:scale-[0.99]',
+        'card-surface relative p-4',
+        'transition-shadow duration-150 hover:shadow-card-hover',
         'animate-fade-in',
       ].join(' ')}
-      aria-label={`ใบงาน ${order.customerName}`}
     >
+      <Link
+        href={`/workorders/${order.id}`}
+        className="absolute inset-0 rounded-[inherit] focus-visible:z-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pea-600 focus-visible:ring-offset-2"
+        aria-label={`เปิดรายละเอียดใบงาน ${order.customerName}`}
+      >
+        <span className="sr-only">เปิดรายละเอียดใบงาน {order.customerName}</span>
+      </Link>
       {/* Header row */}
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="min-w-0">
@@ -108,7 +107,7 @@ export function WorkOrderCard({ order }: WorkOrderCardProps) {
             <dd>
               {formatDate(order.removalDate)}
               {rentalDays !== null && (
-                <span className="text-xs text-gray-400 ml-1">({rentalDays}ว.)</span>
+                <span className="text-xs text-gray-500 ml-1">({rentalDays}ว.)</span>
               )}
             </dd>
           </div>
@@ -155,8 +154,7 @@ export function WorkOrderCard({ order }: WorkOrderCardProps) {
               href={mapsHref}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={handleNavigate}
-              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-pea-200 bg-white px-3 text-sm font-medium text-pea-700 transition-colors hover:bg-pea-50"
+              className="relative z-10 inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-pea-200 bg-white px-3 text-sm font-medium text-pea-700 transition-colors hover:bg-pea-50"
             >
               <Route className="h-4 w-4" aria-hidden />
               นำทาง
@@ -168,9 +166,9 @@ export function WorkOrderCard({ order }: WorkOrderCardProps) {
               size="md"
               fullWidth
               loading={startRemovalMutation.isPending}
-              onClick={(e) => void handlePrimaryAction(e)}
+              onClick={() => void handlePrimaryAction()}
               leftIcon={<Wrench className="h-4 w-4" />}
-              className="min-h-11 flex-1"
+              className="relative z-10 min-h-11 flex-1"
             >
               {canStartInstall ? 'เริ่มติดตั้ง' : order.status === 'REMOVING' ? 'ถอดต่อ' : 'เริ่มถอด'}
             </Button>

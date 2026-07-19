@@ -20,7 +20,8 @@
   /* Text */
   --color-text:          #1a1625;
   --color-text-muted:    #6b6783;
-  --color-text-subtle:   #9c99b4;
+  /* Minimum AA contrast on white for captions and timestamps. */
+  --color-text-subtle:   #6b6783;
 
   /* Sidebar */
   --sidebar-width:       240px;
@@ -31,17 +32,17 @@
   --sidebar-hover-bg:    rgba(255 255 255 / 0.06);
 
   /* Status — each has a solid and a background tint */
-  --status-scheduled:        #64748b;
+  --status-scheduled:        #475569;
   --status-scheduled-bg:     #f1f5f9;
-  --status-active:           #16a34a;
+  --status-active:           #15803d;
   --status-active-bg:        #f0fdf4;
-  --status-removal-due:      #ea580c;
+  --status-removal-due:      #c2410c;
   --status-removal-due-bg:   #fff7ed;
   --status-removing:         #7c3aed;
   --status-removing-bg:      #faf5ff;
   --status-completed:        #166534;
   --status-completed-bg:     #dcfce7;
-  --status-cancelled:        #9ca3af;
+  --status-cancelled:        #4b5563;
   --status-cancelled-bg:     #f9fafb;
 
   /* Spacing */
@@ -173,5 +174,20 @@ h1, h2, h3, h4, h5, h6 {
   aside,
   [data-no-print] {
     display: none !important;
+  }
+}
+
+/* Respect users who ask the operating system to minimise motion. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

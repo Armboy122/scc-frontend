@@ -30,42 +30,42 @@ export const WORK_ORDER_DISPLAY_STATUS_CONFIG: Record<WorkOrderDisplayStatus, Wo
   PENDING_INSTALL: {
     value: 'PENDING_INSTALL',
     label: 'รอติดตั้ง',
-    className: 'bg-[--status-scheduled-bg] text-[--status-scheduled] border-slate-200',
+    className: 'bg-slate-50 text-slate-800 border-slate-200',
   },
   INSTALLED: {
     value: 'INSTALLED',
     label: 'ติดตั้ง',
-    className: 'bg-[--status-active-bg] text-[--status-active] border-green-200',
+    className: 'bg-green-50 text-green-800 border-green-200',
   },
   DUE_SOON: {
     value: 'DUE_SOON',
     label: 'ใกล้ครบ',
-    className: 'bg-orange-50 text-orange-700 border-orange-200',
+    className: 'bg-orange-50 text-orange-800 border-orange-200',
   },
   DUE_TODAY: {
     value: 'DUE_TODAY',
     label: 'ครบกำหนด',
-    className: 'bg-[--status-removal-due-bg] text-[--status-removal-due] border-orange-200',
+    className: 'bg-orange-50 text-orange-800 border-orange-200',
   },
   OVERDUE: {
     value: 'OVERDUE',
     label: 'เกินกำหนด',
-    className: 'bg-red-50 text-red-700 border-red-200',
+    className: 'bg-red-50 text-red-800 border-red-200',
   },
   REMOVING: {
     value: 'REMOVING',
     label: 'กำลังถอด',
-    className: 'bg-[--status-removing-bg] text-[--status-removing] border-violet-200',
+    className: 'bg-violet-50 text-violet-800 border-violet-200',
   },
   COMPLETED: {
     value: 'COMPLETED',
     label: 'เสร็จสิ้น',
-    className: 'bg-[--status-completed-bg] text-[--status-completed] border-emerald-200',
+    className: 'bg-emerald-50 text-emerald-800 border-emerald-200',
   },
   CANCELLED: {
     value: 'CANCELLED',
     label: 'ยกเลิก',
-    className: 'bg-[--status-cancelled-bg] text-[--status-cancelled] border-gray-200',
+    className: 'bg-gray-50 text-gray-700 border-gray-200',
   },
 }
 

@@ -84,7 +84,7 @@ export default function InstallPage({
       }
 
       setScanError(null)
-      setScanFeedback({ tone: 'success', message: `เพิ่ม ${cover.assetCode} และบันทึก draft แล้ว` })
+      setScanFeedback({ tone: 'success', message: `เพิ่ม ${cover.assetCode} และบันทึกรายการชั่วคราวแล้ว` })
       triggerScanFeedback({ tone: 'success' })
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'บันทึกรหัสที่สแกนไม่สำเร็จ'
@@ -101,7 +101,7 @@ export default function InstallPage({
     try {
       await unscanInstall.mutateAsync({ id, coverId: cover.coverId })
       setScanError(null)
-      setScanFeedback({ tone: 'success', message: `ยกเลิกสแกน ${cover.code} และลบจาก draft แล้ว` })
+      setScanFeedback({ tone: 'success', message: `ยกเลิกสแกน ${cover.code} และลบออกจากรายการชั่วคราวแล้ว` })
       triggerScanFeedback({ tone: 'success' })
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'ยกเลิกรหัสที่สแกนไม่สำเร็จ'
@@ -283,7 +283,7 @@ export default function InstallPage({
       <div>
         <p className="mb-2 text-sm font-medium text-gray-700">รูปหลักฐานติดตั้ง <span className="text-red-500">*</span></p>
         <PhotoCapture value={photo} onChange={setPhoto} disabled={submitLocked} />
-        <p className="mt-2 text-xs text-gray-500">รูปจะถูกอัปโหลดไป MinIO และผูกกับรายการฉนวนที่สแกนก่อนยืนยันงาน</p>
+        <p className="mt-2 text-xs text-gray-500">รูปจะถูกบันทึกเป็นหลักฐานของใบงานนี้ และผูกกับรายการฉนวนที่สแกนก่อนยืนยันงาน</p>
       </div>
 
       {/* Submit */}

@@ -9,10 +9,9 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Card } from '@/components/ui/Card'
 import { getCoverContextLabels } from '@/lib/coverPresentation'
 import type { Office } from '@/lib/types'
+import { formatThaiDate } from '@/lib/thaiDate'
 
-const formatDate = (value?: string) => value
-  ? new Date(value).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Bangkok' })
-  : 'ยังไม่กำหนด'
+const formatDate = (value?: string) => formatThaiDate(value, { day: 'numeric', month: 'long', year: 'numeric' })
 
 const BORROW_ACTION_LABELS: Record<string, string> = {
   CREATE: 'สร้างคำขอยืม',

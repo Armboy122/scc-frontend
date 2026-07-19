@@ -140,7 +140,7 @@ export default function ProfilePage() {
         <div className="space-y-1 text-sm text-gray-500">
           <p>Smart Cover Connect</p>
           <p>การไฟฟ้าส่วนภูมิภาค</p>
-          <p className="text-xs text-gray-400 mt-2">v0.1.0</p>
+          <p className="text-xs text-gray-500 mt-2">v0.1.0</p>
         </div>
       </Card>
 

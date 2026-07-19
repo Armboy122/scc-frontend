@@ -175,7 +175,7 @@ export default function DiscrepanciesPage() {
                   <DiscrepancyStatusPill status={discrepancy.status} />
                 </div>
                 <p className="mt-3 line-clamp-2 text-sm leading-6 text-gray-600">{discrepancy.reason}</p>
-                <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-3 text-xs text-gray-400">
+                <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-3 text-xs text-gray-500">
                   <span>{formatDiscrepancyDate(discrepancy.createdAt)}</span>
                   <span className="inline-flex items-center gap-1 font-medium text-pea-700">
                     เปิดรายละเอียด <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />

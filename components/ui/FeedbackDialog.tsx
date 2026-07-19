@@ -114,7 +114,7 @@ export function FeedbackDialog({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="-mr-1 -mt-1 flex h-11 w-11 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-pea-500"
             aria-label="ปิด popup"
           >
             <X className="h-5 w-5" aria-hidden />

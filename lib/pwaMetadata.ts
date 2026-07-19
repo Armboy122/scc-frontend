@@ -25,7 +25,7 @@ export const PWA_ICON_METADATA = {
 // Do not set maximumScale/userScalable: users must be able to zoom field
 // screens and dense operational data to their preferred reading size.
 export const PWA_VIEWPORT: Viewport = {
-  themeColor: '#6d28a8',
+  themeColor: '#FFFFFF',
   width: 'device-width',
   initialScale: 1,
 }

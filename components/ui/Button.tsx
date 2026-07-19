@@ -58,7 +58,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         'inline-flex items-center justify-center font-medium border',
         'transition-colors duration-[--duration-fast] ease-out',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-        'disabled:opacity-50 disabled:cursor-not-allowed',
+        // Keep disabled controls legible instead of lowering their opacity.
+        'disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:border-gray-200 disabled:shadow-none',
         'select-none',
         // Variant + size
         variantClasses[variant],
@@ -69,11 +70,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ].join(' ')}
       {...props}
     >
-      {loading ? (
-        <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
-      ) : leftIcon ? (
-        <span className="flex-shrink-0" aria-hidden>{leftIcon}</span>
-      ) : null}
+      {(loading || leftIcon) && (
+        <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center" aria-hidden>
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : leftIcon}
+        </span>
+      )}
       {children}
     </button>
   )

@@ -24,6 +24,7 @@ import {
   getNotificationTitle,
 } from '@/lib/notificationPresentation'
 import type { Notification, NotificationType } from '@/lib/types'
+import { formatThaiDate } from '@/lib/thaiDate'
 
 interface NotificationTypeConfig {
   icon: LucideIcon
@@ -97,9 +98,8 @@ function notificationTypeConfig(type: string): NotificationTypeConfig {
 }
 
 function formatNotificationDate(createdAt: string): string {
-  const date = new Date(createdAt)
-  if (Number.isNaN(date.getTime())) return 'ไม่ทราบเวลา'
-  return date.toLocaleDateString('th-TH', {
+  if (Number.isNaN(new Date(createdAt).getTime())) return 'ไม่ทราบเวลา'
+  return formatThaiDate(createdAt, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -148,7 +148,7 @@ function NotificationItem({ notification, isMarkingRead, onRead }: NotificationI
           )}
         </span>
         <span className="mt-0.5 block text-sm text-gray-500">{notification.message}</span>
-        <span className="mt-1.5 block text-xs text-gray-400">
+        <span className="mt-1.5 block text-xs text-gray-500">
           {formatNotificationDate(notification.createdAt)}
         </span>
       </span>
@@ -210,7 +210,7 @@ export default function NotificationsPage() {
         <div className="py-16 text-center">
           <Bell className="mx-auto mb-3 h-12 w-12 text-gray-300" aria-hidden />
           <p className="font-medium text-gray-500">ไม่มีการแจ้งเตือน</p>
-          <p className="mt-1 text-sm text-gray-400">
+          <p className="mt-1 text-sm text-gray-500">
             ระบบจะแจ้งเมื่อมีงานถึงกำหนด คำขอยืม ข้อคลาดเคลื่อน หรือการมอบหมายใบงาน
           </p>
         </div>

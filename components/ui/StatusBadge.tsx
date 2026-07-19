@@ -12,73 +12,73 @@ interface BadgeConfig {
 const WORK_ORDER_CONFIG: Record<WorkOrderStatus, BadgeConfig> = {
   SCHEDULED: {
     label: 'รอติดตั้ง',
-    className: 'bg-[--status-scheduled-bg] text-[--status-scheduled] border-slate-200',
+    className: 'bg-slate-50 text-slate-800 border-slate-200',
   },
   ACTIVE: {
     label: 'ติดตั้ง',
-    className: 'bg-[--status-active-bg] text-[--status-active] border-green-200',
+    className: 'bg-green-50 text-green-800 border-green-200',
   },
   REMOVAL_DUE: {
     label: 'ครบกำหนด',
-    className: 'bg-[--status-removal-due-bg] text-[--status-removal-due] border-orange-200',
+    className: 'bg-orange-50 text-orange-800 border-orange-200',
   },
   REMOVING: {
-    label: 'ติดตั้ง',
-    className: 'bg-[--status-removing-bg] text-[--status-removing] border-violet-200',
+    label: 'กำลังถอด',
+    className: 'bg-violet-50 text-violet-800 border-violet-200',
   },
   COMPLETED: {
     label: 'เสร็จสิ้น',
-    className: 'bg-[--status-completed-bg] text-[--status-completed] border-emerald-200',
+    className: 'bg-emerald-50 text-emerald-800 border-emerald-200',
   },
   CANCELLED: {
     label: 'ยกเลิก',
-    className: 'bg-[--status-cancelled-bg] text-[--status-cancelled] border-gray-200',
+    className: 'bg-gray-50 text-gray-700 border-gray-200',
   },
 }
 
 const COVER_CONFIG: Record<CoverStatus, BadgeConfig> = {
   IN_STOCK: {
     label: 'พร้อมติดตั้ง',
-    className: 'bg-green-50 text-green-700 border-green-200',
+    className: 'bg-green-50 text-green-800 border-green-200',
   },
   INSTALLED: {
     label: 'ติดตั้ง',
-    className: 'bg-blue-50 text-blue-700 border-blue-200',
+    className: 'bg-blue-50 text-blue-800 border-blue-200',
   },
   RETIRED: {
     label: 'ปลดออก',
-    className: 'bg-gray-50 text-gray-500 border-gray-200',
+    className: 'bg-gray-50 text-gray-700 border-gray-200',
   },
 }
 
 const BORROW_CONFIG: Record<BorrowStatus, BadgeConfig> = {
   REQUESTED: {
     label: 'รออนุมัติ',
-    className: 'bg-gray-50 text-gray-600 border-gray-200',
+    className: 'bg-gray-50 text-gray-700 border-gray-200',
   },
   APPROVED: {
     label: 'อนุมัติแล้ว',
-    className: 'bg-green-50 text-green-700 border-green-200',
+    className: 'bg-green-50 text-green-800 border-green-200',
   },
   ON_LOAN: {
     label: 'ยืมอยู่',
-    className: 'bg-blue-50 text-blue-700 border-blue-200',
+    className: 'bg-blue-50 text-blue-800 border-blue-200',
   },
   RETURNED: {
     label: 'คืนแล้ว',
-    className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    className: 'bg-emerald-50 text-emerald-800 border-emerald-200',
   },
   REJECTED: {
     label: 'ปฏิเสธ',
-    className: 'bg-red-50 text-red-700 border-red-200',
+    className: 'bg-red-50 text-red-800 border-red-200',
   },
   CANCELLED: {
     label: 'ยกเลิก',
-    className: 'bg-gray-50 text-gray-500 border-gray-200',
+    className: 'bg-gray-50 text-gray-700 border-gray-200',
   },
   OVERDUE: {
     label: 'เกินกำหนด',
-    className: 'bg-red-50 text-red-700 border-red-200',
+    className: 'bg-red-50 text-red-800 border-red-200',
   },
 }
 

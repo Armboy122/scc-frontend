@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -11,6 +11,7 @@ import {
   FileBarChart,
   Handshake,
   LogOut,
+  MoreHorizontal,
   Package,
   Radio,
   Shield,
@@ -159,7 +160,35 @@ function BottomNavItem({
 }
 
 export function getMobileNavItems(items: NavItem[]): NavItem[] {
-  return items.filter((item) => ['/', '/dashboard', '/stock', '/covers', '/admin', '/notifications', '/profile'].includes(item.href))
+  // Keep the persistent bar at four destinations. Account, dashboard, admin,
+  // and any later phase modules stay reachable through the fifth “More” slot.
+  return items.filter((item) => ['/', '/stock', '/covers', '/notifications'].includes(item.href))
+}
+
+function MobileMoreButton({
+  active,
+  open,
+  onClick,
+}: {
+  active: boolean
+  open: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        'flex w-full flex-col items-center gap-1 px-1 py-2 text-xs font-medium transition-colors',
+        active ? 'text-pea-600' : 'text-gray-500 hover:text-gray-900',
+      ].join(' ')}
+      aria-label="เมนูเพิ่มเติม"
+      aria-expanded={open}
+    >
+      <MoreHorizontal className={['h-6 w-6', active ? 'text-pea-600' : 'text-gray-400'].join(' ')} aria-hidden />
+      <span>เพิ่มเติม</span>
+    </button>
+  )
 }
 
 export function getVisibleNavItems(
@@ -223,9 +252,10 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   }, [routeEnabled, router])
 
   const visibleItems = getVisibleNavItems(user?.role)
-
-  // Keep every allowed Phase 1 route reachable; flagged expansion routes can scroll.
   const mobileItems = getMobileNavItems(visibleItems)
+  const mobileOverflowItems = visibleItems.filter((item) => !mobileItems.includes(item))
+  const [isMoreOpen, setIsMoreOpen] = useState(false)
+  const isOverflowRouteActive = mobileOverflowItems.some((item) => isActive(item.href, pathname))
 
   if (!routeEnabled) return null
 
@@ -240,13 +270,11 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         {/* Logo / brand */}
         <div className="px-5 py-5 border-b border-white/10">
           <div className="flex items-center gap-2.5">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-              style={{ background: 'var(--color-primary)' }}
-              aria-hidden
-            >
-              SC
-            </div>
+            <img
+              src="/icons/icon-192.png"
+              alt=""
+              className="w-8 h-8 rounded-lg bg-white object-cover"
+            />
             <div>
               <p className="text-white text-sm font-semibold leading-none">Smart Cover</p>
               <p className="text-white/50 text-xs mt-0.5">Connect</p>
@@ -260,7 +288,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             const items = visibleItems.filter((item) => item.section === section)
             if (!items.length) return null
             return <div key={section} className="space-y-1 pb-3">
-              {section !== 'operations' && <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-white/45">{section === 'admin' ? 'ผู้ดูแลระบบ' : 'บัญชี'}</p>}
+              {section !== 'operations' && <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-white/55">{section === 'admin' ? 'ผู้ดูแลระบบ' : 'บัญชี'}</p>}
               {items.map((item) => <SidebarNavItem key={item.href} item={item} pathname={pathname} badgeCount={item.href === '/notifications' ? unreadNotificationCount : 0} />)}
             </div>
           })}
@@ -299,13 +327,11 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           style={{ boxShadow: 'var(--tw-shadow, 0 1px 0 0 rgb(0 0 0 / 0.06))' }}
         >
           <div className="flex items-center gap-2 min-w-0">
-            <div
-              className="w-7 h-7 rounded-md flex items-center justify-center text-white font-bold text-xs"
-              style={{ background: 'var(--color-primary)' }}
-              aria-hidden
-            >
-              SC
-            </div>
+            <img
+              src="/icons/icon-192.png"
+              alt=""
+              className="w-7 h-7 rounded-md bg-white object-cover"
+            />
             <span className="font-semibold text-gray-900 text-sm truncate">Smart Cover Connect</span>
           </div>
           {user && (
@@ -340,9 +366,9 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         aria-label="เมนูล่าง"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="flex items-stretch overflow-x-auto">
+        <div className="flex items-stretch">
           {mobileItems.map((item) => (
-            <div key={item.href} className="min-w-16 flex-1">
+            <div key={item.href} className="min-w-0 flex-1">
               <BottomNavItem
                 item={item}
                 pathname={pathname}
@@ -350,8 +376,52 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
               />
             </div>
           ))}
+          {mobileOverflowItems.length > 0 && (
+            <div className="min-w-0 flex-1">
+              <MobileMoreButton
+                active={isMoreOpen || isOverflowRouteActive}
+                open={isMoreOpen}
+                onClick={() => setIsMoreOpen((open) => !open)}
+              />
+            </div>
+          )}
         </div>
       </nav>
+
+      {isMoreOpen && (
+        <div className="md:hidden fixed inset-0 z-50" role="presentation">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/30"
+            onClick={() => setIsMoreOpen(false)}
+            aria-label="ปิดเมนูเพิ่มเติม"
+          />
+          <section
+            className="absolute inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] rounded-2xl bg-white p-2 shadow-xl"
+            aria-label="เมนูเพิ่มเติม"
+          >
+            {mobileOverflowItems.map((item) => {
+              const Icon = item.icon
+              const active = isActive(item.href, pathname)
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsMoreOpen(false)}
+                  className={[
+                    'flex min-h-12 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium',
+                    active ? 'bg-pea-50 text-pea-700' : 'text-gray-700 hover:bg-gray-50',
+                  ].join(' ')}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  <Icon className="h-5 w-5" aria-hidden />
+                  {item.label}
+                </Link>
+              )
+            })}
+          </section>
+        </div>
+      )}
     </div>
   )
 }

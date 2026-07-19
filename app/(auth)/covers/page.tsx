@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronRight, Plus, Radio, Search, Shield } from 'lucide-react'
 import { useCovers } from '@/hooks/useCovers'
@@ -25,15 +25,21 @@ export default function CoversPage() {
   const router = useRouter()
   const canManageNfc = user?.role === 'admin' || user?.role === 'tech'
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<CoverStatus | 'ALL'>('ALL')
   const [officeId, setOfficeId] = useState('')
   // The list API supplies names for the rare projection where a cover omits
   // ownerOffice. Never make an internal office ID the user-facing fallback.
   const { data: offices = [] } = useOffices()
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search), 300)
+    return () => window.clearTimeout(timer)
+  }, [search])
+
   const { data: covers = [], isLoading, error } = useCovers({
     status: statusFilter !== 'ALL' ? statusFilter : undefined,
-    q: search.trim() || undefined,
+    q: debouncedSearch.trim() || undefined,
     officeId: user?.role === 'admin' ? officeId || undefined : undefined,
   })
 
@@ -48,7 +54,7 @@ export default function CoversPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-gray-900">รายการฉนวน</h1>
-          <p className="text-sm text-gray-500 mt-0.5">ดูสถานะและกดแต่ละรายการเพื่อดูประวัติการยืม–คืน</p>
+          <p className="text-sm text-gray-500 mt-0.5">ค้นหาและเลือกแต่ละรายการเพื่อดูรายละเอียด</p>
         </div>
         {canManageNfc && <div className="flex gap-2">
           <Button type="button" variant="outline" size="sm" leftIcon={<Radio className="h-4 w-4" />} onClick={() => router.push('/covers/check-tag')}>ตรวจ NFC</Button>
@@ -60,6 +66,7 @@ export default function CoversPage() {
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
         <div className="flex-1">
           <Input
+            aria-label="ค้นหารายการฉนวน"
             placeholder="ค้นหา รหัสทรัพย์สิน หรือ QR Code"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -124,7 +131,6 @@ export default function CoversPage() {
                 {contextLabels(cover).map((label) => (
                   <span key={label} className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">{label}</span>
                 ))}
-                <p className="text-xs font-medium text-pea-700">ดูประวัติยืม–คืน</p>
               </button>
             ))}
           </div>
@@ -137,12 +143,23 @@ export default function CoversPage() {
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">รหัสทรัพย์สิน</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">สถานะ</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">สำนักงานเจ้าของ</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700">ประวัติ</th>
                 </tr>
               </thead>
               <tbody>
                 {covers.map((cover) => (
-                  <tr key={cover.id} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer" onClick={() => router.push(`/covers/${cover.id}`)}>
+                  <tr
+                    key={cover.id}
+                    tabIndex={0}
+                    aria-label={`เปิดรายละเอียดฉนวน ${cover.assetCode}`}
+                    className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-pea-500"
+                    onClick={() => router.push(`/covers/${cover.id}`)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        router.push(`/covers/${cover.id}`)
+                      }
+                    }}
+                  >
                     <td className="px-4 py-3 font-mono font-medium">{cover.assetCode}</td>
                     <td className="px-4 py-3">
                       <StatusBadge coverStatus={cover.status} size="sm" />
@@ -153,16 +170,13 @@ export default function CoversPage() {
                     <td className="px-4 py-3 text-gray-600">
                       {officeName(cover)}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="inline-flex items-center gap-1 text-sm font-medium text-pea-700">ดูยืม–คืน <ChevronRight className="h-4 w-4" aria-hidden /></span>
-                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <p className="text-xs text-gray-400 mt-3 text-right">
+          <p className="text-xs text-gray-500 mt-3 text-right">
             แสดง {covers.length} รายการ
           </p>
         </>

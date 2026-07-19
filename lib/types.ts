@@ -324,13 +324,11 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   accessToken: string
-  refreshToken: string
   user: User
 }
 
 export interface RefreshResponse {
   accessToken: string
-  refreshToken: string
   user: User
 }
 

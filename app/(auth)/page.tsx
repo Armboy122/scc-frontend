@@ -106,14 +106,15 @@ export default function WorkOrdersPage() {
           )}
         </div>
         {canCreate && (
-          <Button
-            size="md"
-            leftIcon={<ClipboardPlus className="w-4 h-4" />}
-            onClick={() => router.push('/workorders/new')}
-            className="w-full sm:w-auto"
-          >
-            สร้างใบงาน
-          </Button>
+          <div className="hidden sm:block">
+            <Button
+              size="md"
+              leftIcon={<ClipboardPlus className="w-4 h-4" />}
+              onClick={() => router.push('/workorders/new')}
+            >
+              สร้างใบงาน
+            </Button>
+          </div>
         )}
       </div>
 
@@ -122,16 +123,11 @@ export default function WorkOrdersPage() {
       </div>
 
       {/* Status filter tabs */}
-      <div
-        className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide"
-        role="tablist"
-        aria-label="กรองสถานะ"
-      >
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide" aria-label="กรองสถานะ">
         {STATUS_FILTERS.map((f) => (
           <button
             key={f.value}
-            role="tab"
-            aria-selected={statusFilter === f.value}
+            aria-pressed={statusFilter === f.value}
             onClick={() => setStatusFilter(f.value)}
             className={[
               'flex-shrink-0 min-h-11 px-4 py-2.5 rounded-full text-sm font-medium transition-colors',
@@ -147,7 +143,7 @@ export default function WorkOrdersPage() {
 
       {/* Content */}
       {isLoading && (
-        <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="card-surface p-4 h-28 animate-pulse bg-gray-100" />
           ))}
@@ -167,7 +163,7 @@ export default function WorkOrdersPage() {
         <div className="text-center py-16">
           <Filter className="w-12 h-12 mx-auto mb-3 text-gray-300" aria-hidden />
           <p className="text-gray-500 font-medium">ยังไม่มีใบงาน</p>
-          <p className="text-gray-400 text-sm mt-1">
+          <p className="text-gray-500 text-sm mt-1">
             {statusFilter !== 'ALL' ? 'ลองเปลี่ยนตัวกรองสถานะ' : 'ยังไม่มีใบงานในระบบ'}
           </p>
           {canCreate && (
@@ -184,7 +180,7 @@ export default function WorkOrdersPage() {
       )}
 
       {!isLoading && !error && orders.length > 0 && (
-        <div className="space-y-5">
+        <div className="space-y-5 pb-24 md:pb-0">
           {statusFilter === 'ALL' && urgentOrders.length > 0 && (
             <section className="space-y-3" aria-labelledby="urgent-workorders-heading">
               <div>
@@ -220,6 +216,9 @@ export default function WorkOrdersPage() {
           )}
         </div>
       )}
+
+      {/* Keep the floating action button from covering the last card on mobile. */}
+      {canCreate && <div className="h-24 md:hidden" aria-hidden />}
 
       {/* FAB for mobile */}
       {canCreate && (

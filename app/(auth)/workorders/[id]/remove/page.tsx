@@ -305,8 +305,8 @@ export default function RemovePage({
               {submitLocked ? 'กำลังประมวลผล...' : `ปิดงาน (${removedQty}/${totalQty} ชิ้น)`}
             </Button>
             {!allRemoved && (
-              <p className="text-center text-xs text-gray-400">
-                ต้องถอดรายการบน server ให้ครบ {totalQty} ชิ้น จึงจะปิดงานได้
+              <p className="text-center text-xs text-gray-500">
+                ต้องถอดรายการให้ครบ {totalQty} ชิ้น จึงจะปิดงานได้
               </p>
             )}
           </div>

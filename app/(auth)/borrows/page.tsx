@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import type { BorrowDirection, BorrowQueryParams, BorrowStatus } from '@/lib/types'
+import { formatThaiDate } from '@/lib/thaiDate'
 
 const STATUS_FILTERS: { label: string; value: BorrowStatus | 'ALL' }[] = [
   { label: 'ทั้งหมด', value: 'ALL' },
@@ -27,10 +28,8 @@ const DIRECTION_FILTERS = [
 ]
 
 function formatDate(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleDateString('th-TH', {
-    timeZone: 'Asia/Bangkok',
+  if (Number.isNaN(new Date(value).getTime())) return '—'
+  return formatThaiDate(value, {
     day: '2-digit',
     month: 'short',
     year: '2-digit',
@@ -152,7 +151,7 @@ export default function BorrowsPage() {
         <div className="text-center py-16">
           <Handshake className="w-12 h-12 mx-auto mb-3 text-gray-300" aria-hidden />
           <p className="text-gray-500 font-medium">ยังไม่มีใบยืมในมุมมองนี้</p>
-          <p className="text-sm text-gray-400 mt-1">เปลี่ยนทิศทางหรือสถานะเพื่อดูรายการอื่นได้</p>
+          <p className="text-sm text-gray-500 mt-1">เปลี่ยนทิศทางหรือสถานะเพื่อดูรายการอื่นได้</p>
           {canCreate && (
             <Link
               href="/borrows/new"

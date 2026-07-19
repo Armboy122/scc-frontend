@@ -3,14 +3,28 @@
 import Link from 'next/link'
 import { FileBarChart, Lock, Users } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
+import type { PhaseFeatureFlags } from '@/lib/featureFlags'
+import { isAdminLinkEnabled } from './adminLinks'
 
 const links = [
-  { href: '/admin/users', label: 'ผู้ใช้งาน', description: 'บทบาท ย้ายสำนักงาน และสถานะบัญชี', icon: Users },
-  { href: '/admin/reports', label: 'รายงาน', description: 'สรุปและส่งออกข้อมูล', icon: FileBarChart },
+  {
+    href: '/admin/users',
+    label: 'ผู้ใช้งาน',
+    description: 'บทบาท ย้ายสำนักงาน และสถานะบัญชี',
+    icon: Users,
+  },
+  {
+    href: '/admin/reports',
+    label: 'รายงาน',
+    description: 'สรุปและส่งออกข้อมูล',
+    icon: FileBarChart,
+    feature: 'phase3Expansion' as keyof PhaseFeatureFlags,
+  },
 ]
 
 export default function AdminMorePage() {
   const { user } = useAuth()
   if (user?.role !== 'admin') return <div className="page-padding mx-auto max-w-lg py-16 text-center"><Lock className="mx-auto mb-3 h-12 w-12 text-gray-400" /><p className="font-medium">สำหรับผู้ดูแลระบบเท่านั้น</p></div>
-  return <div className="page-padding mx-auto w-full max-w-none"><header className="mb-6"><h1 className="text-xl font-bold">ผู้ดูแลระบบ</h1><p className="mt-1 text-sm text-gray-600">เครื่องมือจัดการระบบเพิ่มเติม</p></header><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{links.map(({ href, label, description, icon: Icon }) => <Link key={href} href={href} className="card-surface flex items-center gap-3 p-4 transition-colors hover:border-pea-300 hover:bg-pea-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pea-500"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-pea-50 text-pea-700"><Icon className="h-5 w-5" /></span><span><span className="block font-semibold text-gray-900">{label}</span><span className="mt-0.5 block text-sm text-gray-600">{description}</span></span></Link>)}</div></div>
+  const availableLinks = links.filter((link) => isAdminLinkEnabled(link.feature))
+  return <div className="page-padding mx-auto w-full max-w-none"><header className="mb-6"><h1 className="text-xl font-bold">ผู้ดูแลระบบ</h1><p className="mt-1 text-sm text-gray-600">เครื่องมือจัดการระบบเพิ่มเติม</p></header><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{availableLinks.map(({ href, label, description, icon: Icon }) => <Link key={href} href={href} className="card-surface flex items-center gap-3 p-4 transition-colors hover:border-pea-300 hover:bg-pea-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pea-500"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-pea-50 text-pea-700"><Icon className="h-5 w-5" /></span><span><span className="block font-semibold text-gray-900">{label}</span><span className="mt-0.5 block text-sm text-gray-600">{description}</span></span></Link>)}</div></div>
 }

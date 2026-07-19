@@ -21,12 +21,10 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { WorkOrderAssignmentCard } from '@/components/feature/WorkOrderAssignmentCard'
 import type { WorkOrder } from '@/lib/types'
+import { formatThaiDate } from '@/lib/thaiDate'
 
 function formatDate(iso?: string) {
-  if (!iso) return 'ยังไม่กำหนด'
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return 'ยังไม่กำหนด'
-  return date.toLocaleDateString('th-TH', {
+  return formatThaiDate(iso, {
     weekday: 'short',
     day: '2-digit',
     month: 'long',

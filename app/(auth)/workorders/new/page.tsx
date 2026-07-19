@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ArrowLeft, ArrowRight, AlertTriangle } from 'lucide-react'
@@ -11,12 +11,14 @@ import { useAuth } from '@/lib/auth'
 import { useCreateWorkOrder } from '@/hooks/useWorkOrders'
 import { useOfficeStock } from '@/hooks/useStock'
 import { Input } from '@/components/ui/Input'
+import { ThaiDatePicker } from '@/components/ui/ThaiDatePicker'
 import { Textarea } from '@/components/ui/Textarea'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { GpsPicker, type GpsCoords } from '@/components/feature/GpsPicker'
 import { ApiError } from '@/lib/api'
 import { PHASE_FEATURE_FLAGS } from '@/lib/featureFlags'
+import { thaiDateInputToStartOfDayRfc3339 } from '@/lib/thaiDate'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -38,10 +40,6 @@ const schema = z
 
 type NewWorkOrderForm = z.infer<typeof schema>
 
-function toApiDate(date: string): string {
-  return new Date(`${date}T00:00:00+07:00`).toISOString()
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NewWorkOrderPage() {
@@ -54,7 +52,7 @@ export default function NewWorkOrderPage() {
     register,
     handleSubmit,
     watch,
-    setValue,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<NewWorkOrderForm>({
     resolver: zodResolver(schema),
@@ -64,7 +62,7 @@ export default function NewWorkOrderPage() {
   const installDate = watch('installDate')
   const removalDate = watch('removalDate')
   const plannedQty = watch('plannedQty')
-  const stockInstallDate = installDate ? toApiDate(installDate) : undefined
+  const stockInstallDate = installDate ? thaiDateInputToStartOfDayRfc3339(installDate) : undefined
   const { data: stock } = useOfficeStock(user?.officeId ?? '', stockInstallDate)
 
   const rentalDays =
@@ -94,8 +92,8 @@ export default function NewWorkOrderPage() {
         customerName: data.customerName,
         requestNumber: data.requestNumber || undefined,
         customerPhone: data.customerPhone,
-        installDate: toApiDate(data.installDate),
-        removalDate: toApiDate(data.removalDate),
+        installDate: thaiDateInputToStartOfDayRfc3339(data.installDate),
+        removalDate: thaiDateInputToStartOfDayRfc3339(data.removalDate),
         plannedQty: data.plannedQty,
         note: data.note,
         usageType: data.usageType,
@@ -185,26 +183,19 @@ export default function NewWorkOrderPage() {
         />
 
         <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="วันติดตั้ง"
-            type="date"
-            required
-            error={errors.installDate?.message}
-            {...register('installDate')}
-          />
+          <Controller name="installDate" control={control} render={({ field }) => (
+            <ThaiDatePicker label="วันติดตั้ง" required value={field.value} onChange={field.onChange} error={errors.installDate?.message} />
+          )} />
           <div>
-            <Input
-              label="วันถอด"
-              type="date"
-              required
-              error={errors.removalDate?.message}
-              {...register('removalDate')}
-            />
+            <Controller name="removalDate" control={control} render={({ field }) => (
+              <ThaiDatePicker label="วันถอด" required value={field.value} onChange={field.onChange} error={errors.removalDate?.message} />
+            )} />
             {rentalDays !== null && rentalDays > 0 && (
               <p className="text-xs text-gray-500 mt-1">เช่า {rentalDays} วัน</p>
             )}
           </div>
         </div>
+        <p className="-mt-3 text-xs text-gray-500">เลือกวันในรูปแบบ พ.ศ. — ระบบจะเก็บและส่งข้อมูลเป็น ค.ศ. มาตรฐานเดิม</p>
 
         <Input
           label="จำนวนฉนวน (ชิ้น)"
@@ -240,7 +231,13 @@ export default function NewWorkOrderPage() {
           </p>
         )}
 
-        <div className="flex gap-3 pt-2">
+        <div className="pt-2">
+          {stockWarning && (
+            <p role="status" className="mb-2 text-center text-sm font-medium text-orange-800">
+              ยังสร้างใบงานไม่ได้: สต็อกขาด {stockShortfall} ชิ้น
+            </p>
+          )}
+          <div className="flex gap-3">
           <Button
             type="button"
             variant="outline"
@@ -259,6 +256,7 @@ export default function NewWorkOrderPage() {
           >
             สร้างใบงาน
           </Button>
+          </div>
         </div>
       </form>
     </div>

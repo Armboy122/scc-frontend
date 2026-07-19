@@ -10,10 +10,29 @@ interface QrScannerProps {
   onError?: (err: string) => void
 }
 
+function getCameraErrorMessage(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err ?? '')
+
+  if (/notallowed|permission|denied/i.test(message)) {
+    return 'ไม่ได้รับอนุญาตให้ใช้กล้อง — เปิดสิทธิ์กล้องในการตั้งค่า แล้วลองใหม่'
+  }
+  if (/notfound|no.*camera|device.*not.*found/i.test(message)) {
+    return 'ไม่พบกล้องบนอุปกรณ์นี้ — ตรวจสอบว่ามีกล้องพร้อมใช้งาน แล้วลองใหม่'
+  }
+  if (/notreadable|in use|track.*start/i.test(message)) {
+    return 'กล้องกำลังถูกใช้งานโดยแอปอื่น — ปิดแอปนั้นแล้วลองใหม่'
+  }
+
+  return 'ไม่สามารถเปิดกล้องได้ กรุณาลองใหม่'
+}
+
 export function QrScanner({ onScan, onError }: QrScannerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const scannerRef = useRef<Html5Qrcode | null>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
   const containerId = 'qr-scanner-container'
 
   const startScanner = async () => {
@@ -34,7 +53,7 @@ export function QrScanner({ onScan, onError }: QrScannerProps) {
         undefined,
       )
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'ไม่สามารถเปิดกล้องได้'
+      const msg = getCameraErrorMessage(err)
       setError(msg)
       onError?.(msg)
     }
@@ -73,6 +92,50 @@ export function QrScanner({ onScan, onError }: QrScannerProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
+  useEffect(() => {
+    if (!isOpen) return
+
+    const trigger = triggerRef.current
+    closeRef.current?.focus()
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        void handleClose()
+        return
+      }
+      if (event.key !== 'Tab') return
+
+      const panel = panelRef.current
+      if (!panel) return
+      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ))
+      if (focusable.length === 0) {
+        event.preventDefault()
+        return
+      }
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement
+      if (event.shiftKey && (active === first || !panel.contains(active))) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      if (trigger?.isConnected) trigger.focus()
+    }
+  // `handleClose` deliberately uses the scanner instance current at the time of closing.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
+
   return (
     <>
       <Button
@@ -81,6 +144,7 @@ export function QrScanner({ onScan, onError }: QrScannerProps) {
         leftIcon={<Camera className="w-6 h-6" />}
         onClick={handleOpen}
         className="h-16 text-lg"
+        ref={triggerRef}
       >
         สแกน QR Code
       </Button>
@@ -92,11 +156,13 @@ export function QrScanner({ onScan, onError }: QrScannerProps) {
           aria-modal="true"
           aria-label="สแกน QR Code"
         >
-          <div className="w-full max-w-sm bg-white rounded-2xl overflow-hidden shadow-2xl">
+          <div ref={panelRef} className="w-full max-w-sm bg-white rounded-2xl overflow-hidden shadow-2xl">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
               <h2 className="font-semibold text-gray-900">สแกน QR Code</h2>
               <button
+                ref={closeRef}
+                type="button"
                 onClick={() => void handleClose()}
                 className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
                 aria-label="ปิด"

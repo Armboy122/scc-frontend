@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { Eye, EyeOff, Zap } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { ApiError } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
@@ -57,19 +58,24 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--sidebar-bg)' }}>
       {/* Header band */}
-      <div className="flex-shrink-0 px-6 pt-14 pb-10 text-center">
+      <div className="flex-shrink-0 px-6 pt-14 pb-10 text-center md:pt-16 md:pb-12">
         {/* Logo mark */}
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-pea-600 shadow-lg mb-5">
-          <Zap className="w-8 h-8 text-white" aria-hidden />
-        </div>
+        <Image
+          src="/icons/icon-192.png"
+          alt="Smart Cover Connect"
+          width={64}
+          height={64}
+          priority
+          className="inline-block w-16 h-16 rounded-2xl bg-white shadow-lg mb-5"
+        />
         <h1 className="text-2xl font-bold text-white tracking-tight">Smart Cover Connect</h1>
         <p className="text-white/50 text-sm mt-1">ระบบจัดการฉนวนครอบสายไฟ</p>
-        <p className="text-white/30 text-xs mt-0.5">การไฟฟ้าส่วนภูมิภาค</p>
+        <p className="text-white/60 text-xs mt-0.5">การไฟฟ้าส่วนภูมิภาค</p>
       </div>
 
       {/* Form card */}
-      <div className="flex-1 flex flex-col">
-        <div className="bg-white rounded-t-3xl flex-1 px-6 pt-8 pb-12">
+      <div className="flex-1 flex flex-col md:items-center md:justify-center md:px-6 md:pb-16">
+        <div className="flex-1 bg-white rounded-t-3xl px-6 pt-8 pb-12 md:w-full md:max-w-md md:flex-none md:rounded-3xl md:p-8 md:shadow-2xl">
           <h2 className="text-lg font-bold text-gray-900 mb-6">เข้าสู่ระบบ</h2>
 
           {/* Server error */}
@@ -128,7 +134,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-pea-500"
                   aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
                 >
                   {showPassword ? (
@@ -156,7 +162,7 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <p className="mt-8 text-center text-xs text-gray-400">
+          <p className="mt-8 text-center text-xs text-gray-500">
             ติดต่อผู้ดูแลระบบหากไม่สามารถเข้าสู่ระบบได้
           </p>
         </div>

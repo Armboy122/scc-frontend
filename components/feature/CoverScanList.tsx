@@ -18,7 +18,7 @@ interface CoverScanListProps {
 export function CoverScanList({ covers, onRemove, readOnly = false }: CoverScanListProps) {
   if (covers.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-400">
+      <div className="text-center py-8 text-gray-500">
         <CheckCircle2 className="w-10 h-10 mx-auto mb-2 opacity-30" aria-hidden />
         <p className="text-sm">ยังไม่มีฉนวนที่สแกน</p>
       </div>
@@ -44,7 +44,7 @@ export function CoverScanList({ covers, onRemove, readOnly = false }: CoverScanL
           {/* Code */}
           <div className="flex-1 min-w-0">
             <p className="font-mono text-sm font-medium text-gray-900 truncate">{cover.code}</p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-500">
               {cover.scannedAt.toLocaleTimeString('th-TH', {
                 hour: '2-digit',
                 minute: '2-digit',
