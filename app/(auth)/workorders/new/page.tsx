@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/auth'
 import { useCreateWorkOrder } from '@/hooks/useWorkOrders'
 import { useOfficeStock } from '@/hooks/useStock'
 import { Input } from '@/components/ui/Input'
-import { ThaiDatePicker } from '@/components/ui/ThaiDatePicker'
+import { ThaiDateRangePicker } from '@/components/ui/ThaiDateRangePicker'
 import { Textarea } from '@/components/ui/Textarea'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
@@ -64,16 +64,6 @@ export default function NewWorkOrderPage() {
   const plannedQty = watch('plannedQty')
   const stockInstallDate = installDate ? thaiDateInputToStartOfDayRfc3339(installDate) : undefined
   const { data: stock } = useOfficeStock(user?.officeId ?? '', stockInstallDate)
-
-  const rentalDays =
-    installDate && removalDate
-      ? Math.max(
-          0,
-          Math.round(
-            (new Date(removalDate).getTime() - new Date(installDate).getTime()) / 86_400_000,
-          ),
-        )
-      : null
 
   const availableForWorkOrder = stock?.availableForWorkOrder ?? stock?.inStock ?? null
   const stockWarning = availableForWorkOrder !== null && plannedQty > availableForWorkOrder
@@ -182,20 +172,21 @@ export default function NewWorkOrderPage() {
           {...register('customerPhone')}
         />
 
-        <div className="grid grid-cols-2 gap-3">
-          <Controller name="installDate" control={control} render={({ field }) => (
-            <ThaiDatePicker label="วันติดตั้ง" required value={field.value} onChange={field.onChange} error={errors.installDate?.message} />
+        <Controller name="installDate" control={control} render={({ field: installField }) => (
+          <Controller name="removalDate" control={control} render={({ field: removalField }) => (
+            <ThaiDateRangePicker
+              installDate={installField.value}
+              removalDate={removalField.value}
+              onChange={({ installDate, removalDate }) => {
+                installField.onChange(installDate)
+                removalField.onChange(removalDate)
+              }}
+              installError={errors.installDate?.message}
+              removalError={errors.removalDate?.message}
+            />
           )} />
-          <div>
-            <Controller name="removalDate" control={control} render={({ field }) => (
-              <ThaiDatePicker label="วันถอด" required value={field.value} onChange={field.onChange} error={errors.removalDate?.message} />
-            )} />
-            {rentalDays !== null && rentalDays > 0 && (
-              <p className="text-xs text-gray-500 mt-1">เช่า {rentalDays} วัน</p>
-            )}
-          </div>
-        </div>
-        <p className="-mt-3 text-xs text-gray-500">เลือกวันในรูปแบบ พ.ศ. — ระบบจะเก็บและส่งข้อมูลเป็น ค.ศ. มาตรฐานเดิม</p>
+        )} />
+        <p className="-mt-3 text-xs text-gray-500">เลือกวันในปฏิทินแบบ พ.ศ. — ระบบจะเก็บและส่งข้อมูลเป็น ค.ศ. มาตรฐานเดิม</p>
 
         <Input
           label="จำนวนฉนวน (ชิ้น)"

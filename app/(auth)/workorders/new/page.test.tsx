@@ -64,13 +64,14 @@ describe('NewWorkOrderPage stock recovery path', () => {
     const plannedQty = screen.getByLabelText(/จำนวนฉนวน/)
     await user.clear(plannedQty)
     await user.type(plannedQty, '5')
-    await user.selectOptions(screen.getByLabelText('วันถอด ปี พ.ศ.'), '2642')
-    await user.selectOptions(screen.getByLabelText('วันถอด เดือน'), '8')
-    await user.selectOptions(screen.getByLabelText('วันถอด วัน'), '31')
+    await user.click(screen.getByRole('button', { name: /ระยะเวลาติดตั้ง/ }))
+    const days = screen.getAllByRole('button', { name: /เลือกวันที่/ })
+    await user.click(days[0])
+    await user.click(days[1])
 
     expect(await screen.findByRole('link', { name: /ขอยืมเพิ่ม 3 ชิ้น/ })).toHaveAttribute(
       'href',
-      '/borrows/new?requestedQty=3&returnDate=2099-08-31',
+      expect.stringMatching(/^\/borrows\/new\?requestedQty=3&returnDate=\d{4}-\d{2}-\d{2}$/),
     )
     expect(screen.getByRole('button', { name: 'สร้างใบงาน' })).toBeDisabled()
     expect(screen.getByRole('status')).toHaveTextContent('ยังสร้างใบงานไม่ได้: สต็อกขาด 3 ชิ้น')
