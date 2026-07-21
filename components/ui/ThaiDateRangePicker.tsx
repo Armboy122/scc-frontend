@@ -100,7 +100,9 @@ export function ThaiDateRangePicker({
     {installDate && removalDate && <p className="mt-1.5 text-xs text-gray-500">เช่า {Math.round((dateAtUtc(removalDate).getTime() - dateAtUtc(installDate).getTime()) / 86_400_000)} วัน</p>}
     {error && <p role="alert" className="mt-1 text-xs text-red-600">{error}</p>}
 
-    {open && <div role="dialog" aria-label="เลือกวันติดตั้งและวันถอด" className="absolute z-20 mt-2 w-full rounded-2xl border border-gray-200 bg-white p-4 shadow-xl">
+    {open && <>
+      <button type="button" aria-label="ปิดปฏิทิน" onClick={() => setOpen(false)} className="fixed inset-0 z-[1090] cursor-default bg-slate-950/20 backdrop-blur-[1px]" />
+      <div role="dialog" aria-modal="true" aria-label="เลือกวันติดตั้งและวันถอด" className="fixed inset-x-4 top-1/2 z-[1100] max-h-[calc(100dvh-2rem)] -translate-y-1/2 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-2rem))] sm:-translate-x-1/2">
       <div className="mb-4 flex items-center justify-between">
         <button type="button" onClick={() => changeMonth(-1)} aria-label="เดือนก่อนหน้า" className="rounded-lg p-2 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-pea-500"><ChevronLeft className="h-5 w-5" /></button>
         <p className="font-semibold text-gray-900">{MONTHS[view.month]} {view.year + 543}</p>
@@ -122,6 +124,7 @@ export function ThaiDateRangePicker({
         <p className="text-xs text-gray-500">เลือก 2 วันเพื่อกำหนดช่วงเวลา</p>
         {(installDate || removalDate) && <button type="button" onClick={() => onChange({ installDate: '', removalDate: '' })} className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900"><X className="h-3.5 w-3.5" />ล้าง</button>}
       </div>
-    </div>}
+      </div>
+    </>}
   </div>
 }
