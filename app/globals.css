@@ -167,6 +167,40 @@ h1, h2, h3, h4, h5, h6 {
   background: #fff;
 }
 
+/* Installed-cover operations map markers. */
+.scc-cover-map-marker {
+  --marker-color: var(--color-primary);
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 3px solid white;
+  border-radius: 50% 50% 50% 10%;
+  background: var(--marker-color);
+  color: white;
+  box-shadow: 0 8px 22px rgb(30 10 48 / 0.32);
+  font: 800 13px/1 var(--font-inter), sans-serif;
+  transform: rotate(-45deg);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.scc-cover-map-marker span {
+  transform: rotate(45deg);
+}
+
+.scc-cover-map-marker:hover,
+.scc-cover-map-marker.is-selected {
+  z-index: 2;
+  box-shadow: 0 10px 28px rgb(30 10 48 / 0.45);
+  transform: rotate(-45deg) scale(1.15);
+}
+
+.scc-cover-map-marker.is-overdue { --marker-color: #dc2626; }
+.scc-cover-map-marker.is-due-soon { --marker-color: #d97706; }
+.scc-cover-map-marker.is-removing { --marker-color: #7c3aed; }
+.scc-cover-map-marker.is-normal { --marker-color: #6d28a8; }
+
 /* ─── Print ─────────────────────────────────────────────────────────────────── */
 
 @media print {

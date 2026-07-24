@@ -11,6 +11,7 @@ import {
   FileBarChart,
   Handshake,
   LogOut,
+  MapPinned,
   MoreHorizontal,
   Package,
   Radio,
@@ -41,6 +42,7 @@ export interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'ใบงาน', icon: ClipboardList, section: 'operations' },
   { href: '/dashboard', label: 'แดชบอร์ด', icon: BarChart3, roles: ['admin', 'exec'], section: 'operations' },
+  { href: '/map', label: 'แผนที่ฉนวน', icon: MapPinned, section: 'operations' },
   { href: '/stock', label: 'สต็อก', icon: Package, section: 'operations' },
   { href: '/covers', label: 'ฉนวน', icon: Shield, section: 'operations' },
   { href: '/borrows', label: 'ใบยืม', icon: Handshake, roles: ['admin', 'exec', 'tech'], feature: 'phase2Borrowing', section: 'operations' },

@@ -21,6 +21,25 @@ export function useCovers(params?: CoverQueryParams) {
   })
 }
 
+export function useAllCovers(params?: Omit<CoverQueryParams, 'page' | 'limit'>) {
+  return useQuery({
+    queryKey: [...KEYS.all, 'all-pages', params] as const,
+    queryFn: async () => {
+      const all: Cover[] = []
+      let page = 1
+      while (true) {
+        const res = await api.get<Cover[]>('/covers', { ...params, page, limit: 100 })
+        const batch = res.data ?? []
+        all.push(...batch)
+        const total = res.meta?.total
+        if (batch.length < 100 || (typeof total === 'number' && all.length >= total)) break
+        page += 1
+      }
+      return all
+    },
+  })
+}
+
 // ─── Single ───────────────────────────────────────────────────────────────────
 
 export function useCover(id: string) {

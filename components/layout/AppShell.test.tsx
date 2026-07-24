@@ -76,6 +76,7 @@ describe('AppShell navigation', () => {
     expect(getVisibleNavItems('exec', FLAGS_OFF).map((item) => item.href)).toEqual([
       '/',
       '/dashboard',
+      '/map',
       '/stock',
       '/covers',
       '/notifications',
@@ -83,6 +84,7 @@ describe('AppShell navigation', () => {
     ])
     expect(getVisibleNavItems('tech', FLAGS_OFF).map((item) => item.href)).toEqual([
       '/',
+      '/map',
       '/stock',
       '/covers',
       '/notifications',

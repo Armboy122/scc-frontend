@@ -154,6 +154,30 @@ export function useWorkOrders(params?: WorkOrderQueryParams) {
   })
 }
 
+// Operational map views must not silently omit locations after the first API
+// page. The backend caps a page at 100 rows, so continue until its total is met.
+export function useAllWorkOrders(params?: Omit<WorkOrderQueryParams, 'page' | 'limit'>) {
+  return useQuery({
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    queryKey: [...KEYS.all, 'all-pages', params] as const,
+    queryFn: async () => {
+      const all: WorkOrder[] = []
+      let page = 1
+      while (true) {
+        const res = await api.get<BackendWorkOrder[]>('/workorders', { ...params, page, limit: 100 })
+        const batch = (res.data ?? []).map(normaliseWorkOrder)
+        all.push(...batch)
+        const total = res.meta?.total
+        if (batch.length < 100 || (typeof total === 'number' && all.length >= total)) break
+        page += 1
+      }
+      return all
+    },
+  })
+}
+
 // ─── Single ───────────────────────────────────────────────────────────────────
 
 export function useWorkOrder(id: string) {
