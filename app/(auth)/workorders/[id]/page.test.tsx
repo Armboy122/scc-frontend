@@ -77,4 +77,32 @@ describe('WorkOrderDetailPage service fee', () => {
     expect(screen.queryByLabelText('ค่าบริการรวม VAT 7% (บาท)')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'บันทึกราคา' })).not.toBeInTheDocument()
   })
+
+  it('shows every installed cover by its physical asset code', () => {
+    useWorkOrderMock.mockReturnValue({
+      data: {
+        ...completedOrder,
+        plannedQty: 4,
+        actualQty: 4,
+        installations: [1, 2, 3, 4].map((number) => ({
+          id: `installation-${number}`,
+          workOrderId: completedOrder.id,
+          coverId: `cover-${number}`,
+          coverAssetCode: `PEA${String(number).padStart(10, '0')}`,
+          createdAt: completedOrder.createdAt,
+        })),
+      },
+      isLoading: false,
+      error: null,
+      refetch: refetchMock,
+    })
+
+    render(<WorkOrderDetailPage params={Promise.resolve({ id: 'wo-1' })} />)
+
+    expect(screen.getByText('ฉนวนที่ติดตั้ง (4 ชิ้น)')).toBeInTheDocument()
+    for (const number of [1, 2, 3, 4]) {
+      expect(screen.getByText(`PEA${String(number).padStart(10, '0')}`)).toBeInTheDocument()
+    }
+    expect(screen.queryByText(/ฉนวนรายการที่/)).not.toBeInTheDocument()
+  })
 })

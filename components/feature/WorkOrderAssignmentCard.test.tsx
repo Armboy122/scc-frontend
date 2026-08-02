@@ -107,6 +107,23 @@ describe('WorkOrderAssignmentCard', () => {
     },
   )
 
+  it('shows the persisted assignee name for a completed work order without loading the picker', () => {
+    useTechniciansMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    })
+    render(<WorkOrderAssignmentCard order={makeOrder({
+      status: 'COMPLETED',
+      assignedUser: { id: 'tech-1', name: 'หัวหน้าชุดฮอทไลน์' },
+    })} />)
+
+    expect(screen.getByText('หัวหน้าชุดฮอทไลน์')).toBeInTheDocument()
+    expect(screen.queryByText(/ไม่พบชื่อในรายชื่อช่าง/)).not.toBeInTheDocument()
+    expect(useTechniciansMock).toHaveBeenCalledWith('office-1', false)
+  })
+
   it('does not expose assignment controls to technicians', () => {
     useAuthMock.mockReturnValue({
       user: { id: 'tech-1', name: 'Tech One', role: 'tech', officeId: 'office-1' },

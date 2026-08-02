@@ -360,7 +360,9 @@ export default function WorkOrderDetailPage({
                 <span className="w-5 h-5 rounded-full bg-pea-100 text-pea-700 text-xs font-bold flex items-center justify-center flex-shrink-0">
                   {i + 1}
                 </span>
-                <span>ฉนวนรายการที่ {i + 1}</span>
+                <span className="font-mono font-semibold tracking-wide text-gray-900">
+                  {inst.coverAssetCode ?? inst.coverId}
+                </span>
               </li>
             ))}
           </ul>

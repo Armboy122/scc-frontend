@@ -159,6 +159,7 @@ export interface Installation {
   id: string
   workOrderId: string
   coverId: string
+  coverAssetCode?: string
   createdAt: string
   installedAt?: string
   removedAt?: string
@@ -192,7 +193,7 @@ export interface WorkOrder {
   assignedToId?: string
   /** @deprecated legacy frontend alias; API responses use assignedToId. */
   assignedTo?: string
-  assignedUser?: User
+  assignedUser?: { id: string; name: string }
   installations?: Installation[]
   createdAt: string
   updatedAt: string

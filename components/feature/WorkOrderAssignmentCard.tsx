@@ -60,11 +60,11 @@ export function WorkOrderAssignmentCard({ order }: { order: WorkOrder }) {
     if (order.assignedToId && !available.some((option) => option.value === order.assignedToId)) {
       available.unshift({
         value: order.assignedToId,
-        label: 'ผู้รับผิดชอบปัจจุบัน (ไม่พบชื่อในรายชื่อช่าง)',
+        label: order.assignedUser?.name ?? 'ผู้รับผิดชอบปัจจุบัน (ไม่พบชื่อในรายชื่อช่าง)',
       })
     }
     return available
-  }, [order.assignedToId, techniciansQuery.data])
+  }, [order.assignedToId, order.assignedUser?.name, techniciansQuery.data])
 
   if (!canManage) return null
 
