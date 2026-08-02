@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronRight, Plus, Radio, Search, Shield } from 'lucide-react'
-import { useCovers } from '@/hooks/useCovers'
+import { useAllCovers } from '@/hooks/useCovers'
 import { useAuth } from '@/lib/auth'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Input } from '@/components/ui/Input'
@@ -37,7 +37,7 @@ export default function CoversPage() {
     return () => window.clearTimeout(timer)
   }, [search])
 
-  const { data: covers = [], isLoading, error } = useCovers({
+  const { data: covers = [], isLoading, error } = useAllCovers({
     status: statusFilter !== 'ALL' ? statusFilter : undefined,
     q: debouncedSearch.trim() || undefined,
     officeId: user?.role === 'admin' ? officeId || undefined : undefined,

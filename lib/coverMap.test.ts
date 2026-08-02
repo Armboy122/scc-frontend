@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildCoverMapSites, createGoogleMapsDirectionsUrl, getCoverMapPriority } from './coverMap'
+import {
+  buildCoverMapHistorySites,
+  buildCoverMapSites,
+  countCompletedWorkOrdersWithoutMapCoordinates,
+  createGoogleMapsDirectionsUrl,
+  getCoverMapPriority,
+} from './coverMap'
 import type { Cover, WorkOrder } from './types'
 
 const cover: Cover = {
@@ -39,6 +45,7 @@ describe('cover map projection', () => {
     const sites = buildCoverMapSites([order], [cover], new Date('2026-07-24T00:00:00Z'))
     expect(sites).toHaveLength(1)
     expect(sites[0]).toMatchObject({
+      kind: 'ACTIVE',
       workOrderId: 'wo-1',
       latitude: 7.2,
       longitude: 100.6,
@@ -56,6 +63,42 @@ describe('cover map projection', () => {
       })),
     }
     expect(buildCoverMapSites([removed], [cover])).toEqual([])
+  })
+
+  it('projects completed removals as installation history', () => {
+    const completed: WorkOrder = {
+      ...order,
+      status: 'COMPLETED',
+      installations: order.installations?.map((installation) => ({
+        ...installation,
+        removedAt: '2026-07-23T00:00:00Z',
+      })),
+    }
+
+    expect(buildCoverMapHistorySites([completed], [cover])).toEqual([
+      expect.objectContaining({
+        kind: 'HISTORY',
+        workOrderId: 'wo-1',
+        installedAt: '2026-07-20T00:00:00Z',
+        removedAt: '2026-07-23T00:00:00Z',
+        covers: [{ id: 'cover-1', assetCode: 'PEA-001' }],
+      }),
+    ])
+  })
+
+  it('counts completed work orders whose installation history has no coordinates', () => {
+    const completedWithoutCoordinates: WorkOrder = {
+      ...order,
+      status: 'COMPLETED',
+      gpsLat: undefined,
+      gpsLng: undefined,
+      installations: order.installations?.map((installation) => ({
+        ...installation,
+        removedAt: '2026-07-23T00:00:00Z',
+      })),
+    }
+
+    expect(countCompletedWorkOrdersWithoutMapCoordinates([completedWithoutCoordinates])).toBe(1)
   })
 
   it('prioritises an explicit removal workflow', () => {

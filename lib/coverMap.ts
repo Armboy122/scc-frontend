@@ -1,9 +1,11 @@
 import type { Cover, Installation, WorkOrder, WorkOrderStatus } from './types'
 
 export type CoverMapPriority = 'OVERDUE' | 'DUE_SOON' | 'NORMAL' | 'REMOVING'
+export type CoverMapKind = 'ACTIVE' | 'HISTORY'
 
 export interface CoverMapSite {
   id: string
+  kind: CoverMapKind
   workOrderId: string
   customerName: string
   requestNumber?: string
@@ -11,6 +13,8 @@ export interface CoverMapSite {
   latitude: number
   longitude: number
   removalDate?: string
+  installedAt?: string
+  removedAt?: string
   status: WorkOrderStatus
   priority: CoverMapPriority
   covers: Array<{ id: string; assetCode: string }>
@@ -71,6 +75,7 @@ export function buildCoverMapSites(
     for (const [coordinateKey, group] of grouped) {
       sites.push({
         id: `${order.id}:${coordinateKey}`,
+        kind: 'ACTIVE',
         workOrderId: order.id,
         customerName: order.customerName,
         requestNumber: order.requestNumber,
@@ -80,6 +85,10 @@ export function buildCoverMapSites(
         removalDate: order.removalDate,
         status: order.status,
         priority: getCoverMapPriority(order, now),
+        installedAt: group.installations
+          .map((installation) => installation.installedAt)
+          .filter((value): value is string => Boolean(value))
+          .toSorted()[0],
         covers: group.installations.map((installation) => ({
           id: installation.coverId,
           assetCode: coverById.get(installation.coverId)?.assetCode ?? installation.coverId,
@@ -94,6 +103,80 @@ export function buildCoverMapSites(
     || (a.removalDate ?? '').localeCompare(b.removalDate ?? '')
     || a.customerName.localeCompare(b.customerName, 'th'),
   )
+}
+
+export function buildCoverMapHistorySites(
+  workOrders: WorkOrder[],
+  covers: Cover[],
+): CoverMapSite[] {
+  const coverById = new Map(covers.map((cover) => [cover.id, cover]))
+  const sites: CoverMapSite[] = []
+
+  for (const order of workOrders) {
+    if (order.status !== 'COMPLETED') continue
+
+    const removedInstallations = (order.installations ?? []).filter(
+      (installation) => Boolean(installation.installedAt) && Boolean(installation.removedAt),
+    )
+    const grouped = new Map<string, { latitude: number; longitude: number; installations: Installation[] }>()
+
+    for (const installation of removedInstallations) {
+      const coordinate = installationCoordinate(installation, order)
+      if (!coordinate) continue
+      const key = `${coordinate.latitude.toFixed(6)},${coordinate.longitude.toFixed(6)}`
+      const group = grouped.get(key) ?? { ...coordinate, installations: [] }
+      group.installations.push(installation)
+      grouped.set(key, group)
+    }
+
+    for (const [coordinateKey, group] of grouped) {
+      const installedAt = group.installations
+        .map((installation) => installation.installedAt)
+        .filter((value): value is string => Boolean(value))
+        .toSorted()[0]
+      const removedAt = group.installations
+        .map((installation) => installation.removedAt)
+        .filter((value): value is string => Boolean(value))
+        .toSorted()
+        .at(-1)
+
+      sites.push({
+        id: `${order.id}:history:${coordinateKey}`,
+        kind: 'HISTORY',
+        workOrderId: order.id,
+        customerName: order.customerName,
+        requestNumber: order.requestNumber,
+        officeName: order.office?.name ?? 'ไม่ระบุสำนักงาน',
+        latitude: group.latitude,
+        longitude: group.longitude,
+        removalDate: order.removalDate,
+        installedAt,
+        removedAt,
+        status: order.status,
+        priority: 'NORMAL',
+        covers: group.installations.map((installation) => ({
+          id: installation.coverId,
+          assetCode: coverById.get(installation.coverId)?.assetCode ?? installation.coverId,
+        })),
+      })
+    }
+  }
+
+  return sites.toSorted((a, b) =>
+    (b.removedAt ?? '').localeCompare(a.removedAt ?? '')
+    || a.customerName.localeCompare(b.customerName, 'th'),
+  )
+}
+
+export function countCompletedWorkOrdersWithoutMapCoordinates(workOrders: WorkOrder[]): number {
+  return workOrders.filter((order) => {
+    if (order.status !== 'COMPLETED') return false
+    const completedInstallations = (order.installations ?? []).filter(
+      (installation) => Boolean(installation.installedAt) && Boolean(installation.removedAt),
+    )
+    return completedInstallations.length > 0
+      && completedInstallations.every((installation) => !installationCoordinate(installation, order))
+  }).length
 }
 
 export function createGoogleMapsDirectionsUrl(sites: CoverMapSite[]): string {

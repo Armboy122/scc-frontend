@@ -200,6 +200,58 @@ h1, h2, h3, h4, h5, h6 {
 .scc-cover-map-marker.is-due-soon { --marker-color: #d97706; }
 .scc-cover-map-marker.is-removing { --marker-color: #7c3aed; }
 .scc-cover-map-marker.is-normal { --marker-color: #6d28a8; }
+.scc-cover-map-marker.is-history { --marker-color: #475569; }
+
+.leaflet-tooltip.scc-cover-history-tooltip {
+  max-width: 320px;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.98);
+  box-shadow: 0 12px 30px rgb(15 23 42 / 0.18);
+  color: #0f172a;
+  padding: 0;
+}
+
+.leaflet-tooltip-top.scc-cover-history-tooltip::before {
+  border-top-color: rgb(255 255 255 / 0.98);
+}
+
+.scc-cover-map-tooltip {
+  min-width: 220px;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.scc-cover-map-tooltip-title {
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 8px 10px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.scc-cover-map-tooltip-job {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+}
+
+.scc-cover-map-tooltip-job + .scc-cover-map-tooltip-job {
+  border-top: 1px solid #f1f5f9;
+}
+
+.scc-cover-map-tooltip-job strong,
+.scc-cover-map-tooltip-job span,
+.scc-cover-map-tooltip-job small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scc-cover-map-tooltip-job strong { font-size: 12px; }
+.scc-cover-map-tooltip-job span { color: #334155; font-size: 12px; }
+.scc-cover-map-tooltip-job small { color: #64748b; font-size: 10px; }
 
 /* ─── Print ─────────────────────────────────────────────────────────────────── */
 

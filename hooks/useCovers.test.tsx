@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { api } from '@/lib/api'
 import { OPERATIONAL_QUERY_KEYS } from '@/lib/queryPolicy'
 import type { Cover } from '@/lib/types'
-import { useCovers, useRetireCover } from './useCovers'
+import { useAllCovers, useCovers, useRetireCover } from './useCovers'
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -54,6 +54,24 @@ describe('cover API contracts', () => {
       q: 'PEA-001',
       status: 'IN_STOCK',
     })
+  })
+
+  it('loads every cover page until the API total is reached', async () => {
+    const firstPage = Array.from({ length: 100 }, (_, index) => ({
+      ...cover,
+      id: `cover-${index + 1}`,
+      assetCode: `PEA-${String(index + 1).padStart(3, '0')}`,
+    }))
+    const secondPage = [{ ...cover, id: 'cover-101', assetCode: 'PEA-101' }]
+    vi.mocked(api.get)
+      .mockResolvedValueOnce({ data: firstPage, error: null, meta: { page: 1, limit: 100, total: 101 } })
+      .mockResolvedValueOnce({ data: secondPage, error: null, meta: { page: 2, limit: 100, total: 101 } })
+
+    const { result } = renderHook(() => useAllCovers({ status: 'IN_STOCK' }), { wrapper })
+
+    await waitFor(() => expect(result.current.data).toHaveLength(101))
+    expect(api.get).toHaveBeenNthCalledWith(1, '/covers', { status: 'IN_STOCK', page: 1, limit: 100 })
+    expect(api.get).toHaveBeenNthCalledWith(2, '/covers', { status: 'IN_STOCK', page: 2, limit: 100 })
   })
 
   it('uses POST for the retire endpoint', async () => {
