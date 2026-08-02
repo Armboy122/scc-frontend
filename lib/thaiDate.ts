@@ -33,3 +33,10 @@ export function formatThaiDate(value?: string, options: Intl.DateTimeFormatOptio
     timeZone: 'Asia/Bangkok', day: '2-digit', month: 'short', year: 'numeric', ...options,
   }).format(date)
 }
+
+export function currentBangkokGregorianYear(now = new Date()): number {
+  return Number(new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+  }).format(now))
+}

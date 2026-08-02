@@ -48,13 +48,13 @@ describe('PWA public assets', () => {
     })
     expect(manifest.icons).toEqual([
       {
-        src: '/icons/icon-192.png',
+        src: '/icons/icon-v2-192.png',
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any maskable',
       },
       {
-        src: '/icons/icon-512.png',
+        src: '/icons/icon-v2-512.png',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any maskable',
@@ -63,15 +63,15 @@ describe('PWA public assets', () => {
   })
 
   it('ships real PNGs at every declared size, including Apple touch', () => {
-    expect(readPngDimensions('public/icons/icon-192.png')).toEqual({
+    expect(readPngDimensions('public/icons/icon-v2-192.png')).toEqual({
       width: 192,
       height: 192,
     })
-    expect(readPngDimensions('public/icons/icon-512.png')).toEqual({
+    expect(readPngDimensions('public/icons/icon-v2-512.png')).toEqual({
       width: 512,
       height: 512,
     })
-    expect(readPngDimensions('public/icons/apple-touch-icon.png')).toEqual({
+    expect(readPngDimensions('public/icons/apple-touch-icon-v2.png')).toEqual({
       width: 180,
       height: 180,
     })
@@ -81,19 +81,19 @@ describe('PWA public assets', () => {
     expect(PWA_ICON_METADATA).toEqual({
       icon: [
         {
-          url: '/icons/icon-192.png',
+          url: '/icons/icon-v2-192.png',
           sizes: '192x192',
           type: 'image/png',
         },
         {
-          url: '/icons/icon-512.png',
+          url: '/icons/icon-v2-512.png',
           sizes: '512x512',
           type: 'image/png',
         },
       ],
       apple: [
         {
-          url: '/icons/apple-touch-icon.png',
+          url: '/icons/apple-touch-icon-v2.png',
           sizes: '180x180',
           type: 'image/png',
         },

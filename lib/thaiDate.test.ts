@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatThaiDate, isoDateToThaiBuddhist, thaiBuddhistToIsoDate, thaiDateInputToStartOfDayRfc3339 } from './thaiDate'
+import { currentBangkokGregorianYear, formatThaiDate, isoDateToThaiBuddhist, thaiBuddhistToIsoDate, thaiDateInputToStartOfDayRfc3339 } from './thaiDate'
 
 describe('Thai Buddhist date presentation', () => {
   it('converts only at the UI boundary and preserves Gregorian API values', () => {
@@ -10,5 +10,8 @@ describe('Thai Buddhist date presentation', () => {
   it('rejects invalid Buddhist leap days and formats Bangkok dates with Buddhist years', () => {
     expect(thaiBuddhistToIsoDate(29, 2, 2569)).toBeUndefined()
     expect(formatThaiDate('2026-07-19T00:00:00+07:00')).toContain('2569')
+  })
+  it('uses the Bangkok calendar boundary for the default report year', () => {
+    expect(currentBangkokGregorianYear(new Date('2025-12-31T18:00:00Z'))).toBe(2026)
   })
 })

@@ -19,6 +19,7 @@ import { GpsPicker, type GpsCoords } from '@/components/feature/GpsPicker'
 import { ApiError } from '@/lib/api'
 import { PHASE_FEATURE_FLAGS } from '@/lib/featureFlags'
 import { thaiDateInputToStartOfDayRfc3339 } from '@/lib/thaiDate'
+import { isValidOptionalBahtInput, parseBahtInputToSatang } from '@/lib/money'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -30,6 +31,10 @@ const schema = z
     installDate: z.string().min(1, 'กรุณาเลือกวันติดตั้ง'),
     removalDate: z.string().min(1, 'กรุณาเลือกวันถอด'),
     plannedQty: z.coerce.number().int().min(1, 'จำนวนต้องมากกว่า 0'),
+    serviceFeeIncludingVatBaht: z.string().optional().refine(
+      (value) => isValidOptionalBahtInput(value ?? ''),
+      'กรอกจำนวนเงินบาทไม่ติดลบ และทศนิยมไม่เกิน 2 ตำแหน่ง',
+    ),
     note: z.string().optional(),
     usageType: z.enum(['CUSTOMER_COVER', 'INTERNAL']),
   })
@@ -56,12 +61,14 @@ export default function NewWorkOrderPage() {
     formState: { errors, isSubmitting },
   } = useForm<NewWorkOrderForm>({
     resolver: zodResolver(schema),
-    defaultValues: { plannedQty: 1, usageType: 'CUSTOMER_COVER' },
+    defaultValues: { plannedQty: 1, usageType: 'CUSTOMER_COVER', serviceFeeIncludingVatBaht: '' },
   })
 
   const installDate = watch('installDate')
   const removalDate = watch('removalDate')
   const plannedQty = watch('plannedQty')
+  const usageType = watch('usageType')
+  const canManageServiceFee = user?.role === 'admin' || user?.role === 'exec'
   const stockInstallDate = installDate ? thaiDateInputToStartOfDayRfc3339(installDate) : undefined
   const { data: stock } = useOfficeStock(user?.officeId ?? '', stockInstallDate)
 
@@ -85,6 +92,9 @@ export default function NewWorkOrderPage() {
         installDate: thaiDateInputToStartOfDayRfc3339(data.installDate),
         removalDate: thaiDateInputToStartOfDayRfc3339(data.removalDate),
         plannedQty: data.plannedQty,
+        ...(canManageServiceFee && data.usageType === 'CUSTOMER_COVER' && data.serviceFeeIncludingVatBaht?.trim()
+          ? { serviceFeeIncludingVatSatang: parseBahtInputToSatang(data.serviceFeeIncludingVatBaht) }
+          : {}),
         note: data.note,
         usageType: data.usageType,
         ...(gpsCoords ? { gpsLat: gpsCoords.latitude, gpsLng: gpsCoords.longitude } : {}),
@@ -159,6 +169,18 @@ export default function NewWorkOrderPage() {
           error={errors.customerName?.message}
           {...register('customerName')}
         />
+
+        {canManageServiceFee && usageType === 'CUSTOMER_COVER' ? (
+          <Input
+            label="ค่าบริการรวม VAT 7% (บาท)"
+            type="text"
+            inputMode="decimal"
+            placeholder="0.00"
+            hint="ไม่บังคับ · กรอกเป็นบาท ทศนิยมไม่เกิน 2 ตำแหน่ง"
+            error={errors.serviceFeeIncludingVatBaht?.message}
+            {...register('serviceFeeIncludingVatBaht')}
+          />
+        ) : null}
 
         <Input label="เลขที่ใบคำร้อง" hint="ไม่บังคับ — เพิ่มหรือแก้ไขภายหลังได้" error={errors.requestNumber?.message} {...register('requestNumber')} />
 

@@ -94,10 +94,10 @@ export function useUpdateOffice() {
   })
 }
 
-export function useReportSummary(officeId?: string, enabled = true) {
+export function useReportSummary(officeId?: string, year?: number, enabled = true) {
   return useQuery({
-    queryKey: ['admin', 'reports', 'summary', officeId],
-    queryFn: async () => (await api.get<ReportSummary>('/reports/summary', { officeId })).data,
+    queryKey: ['admin', 'reports', 'summary', officeId, year],
+    queryFn: async () => (await api.get<ReportSummary>('/reports/summary', { officeId, year })).data,
     enabled,
   })
 }

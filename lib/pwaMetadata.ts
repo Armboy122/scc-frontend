@@ -3,19 +3,19 @@ import type { Metadata, Viewport } from 'next'
 export const PWA_ICON_METADATA = {
   icon: [
     {
-      url: '/icons/icon-192.png',
+      url: '/icons/icon-v2-192.png',
       sizes: '192x192',
       type: 'image/png',
     },
     {
-      url: '/icons/icon-512.png',
+      url: '/icons/icon-v2-512.png',
       sizes: '512x512',
       type: 'image/png',
     },
   ],
   apple: [
     {
-      url: '/icons/apple-touch-icon.png',
+      url: '/icons/apple-touch-icon-v2.png',
       sizes: '180x180',
       type: 'image/png',
     },

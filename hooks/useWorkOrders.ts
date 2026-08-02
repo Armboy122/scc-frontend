@@ -344,6 +344,15 @@ export function useCreateWorkOrder() {
   })
 }
 
+export function useUpdateWorkOrderServiceFee() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, serviceFeeIncludingVatSatang }: { id: string; serviceFeeIncludingVatSatang: number | null }) =>
+      api.patch<WorkOrder>(`/workorders/${id}/service-fee`, { serviceFeeIncludingVatSatang }),
+    onSuccess: (res, { id }) => updateWorkOrderCache(qc, id, res.data),
+  })
+}
+
 // ─── Legacy start metadata (does not create an intermediate install status) ───
 
 export function useStartWorkOrder() {

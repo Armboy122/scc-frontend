@@ -1,10 +1,11 @@
 'use client'
 
-import { use, useState } from 'react'
+import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
   Calendar,
+  CircleDollarSign,
   MapPin,
   Package,
   Phone,
@@ -12,7 +13,7 @@ import {
   Wrench,
   XCircle,
 } from 'lucide-react'
-import { useWorkOrder, useCancelWorkOrder, useStartRemoval } from '@/hooks/useWorkOrders'
+import { useWorkOrder, useCancelWorkOrder, useStartRemoval, useUpdateWorkOrderServiceFee } from '@/hooks/useWorkOrders'
 import { useAuth } from '@/lib/auth'
 import { api } from '@/lib/api'
 import { Input } from '@/components/ui/Input'
@@ -22,6 +23,7 @@ import { Card } from '@/components/ui/Card'
 import { WorkOrderAssignmentCard } from '@/components/feature/WorkOrderAssignmentCard'
 import type { WorkOrder } from '@/lib/types'
 import { formatThaiDate } from '@/lib/thaiDate'
+import { formatSatangAsBaht, isValidOptionalBahtInput, parseBahtInputToSatang, satangToBahtInput } from '@/lib/money'
 
 function formatDate(iso?: string) {
   return formatThaiDate(iso, {
@@ -168,6 +170,14 @@ export default function WorkOrderDetailPage({
   const { data: order, isLoading, error, refetch } = useWorkOrder(id)
   const [requestNumber, setRequestNumber] = useState('')
   const [savingRequestNumber, setSavingRequestNumber] = useState(false)
+  const [serviceFeeBaht, setServiceFeeBaht] = useState('')
+  const [serviceFeeError, setServiceFeeError] = useState<string | null>(null)
+  const updateServiceFee = useUpdateWorkOrderServiceFee()
+
+  useEffect(() => {
+    setServiceFeeBaht(satangToBahtInput(order?.serviceFeeIncludingVatSatang))
+    setServiceFeeError(null)
+  }, [order?.id, order?.serviceFeeIncludingVatSatang])
 
   if (isLoading) {
     return (
@@ -191,10 +201,29 @@ export default function WorkOrderDetailPage({
 
   const rentalDays = daysBetween(order.installDate, order.removalDate)
   const canEditRequestNumber = order.status === 'SCHEDULED' && (user?.role === 'admin' || user?.role === 'exec')
+  const canEditServiceFee = user?.role === 'admin' || user?.role === 'exec'
   const saveRequestNumber = async () => {
     setSavingRequestNumber(true)
     try { await api.patch(`/workorders/${order.id}`, { requestNumber: requestNumber.trim() || null }); await refetch() }
     finally { setSavingRequestNumber(false) }
+  }
+  const saveServiceFee = async () => {
+    if (!isValidOptionalBahtInput(serviceFeeBaht)) {
+      setServiceFeeError('กรอกจำนวนเงินบาทไม่ติดลบ และทศนิยมไม่เกิน 2 ตำแหน่ง')
+      return
+    }
+    setServiceFeeError(null)
+    try {
+      await updateServiceFee.mutateAsync({
+        id: order.id,
+        serviceFeeIncludingVatSatang: serviceFeeBaht.trim()
+          ? (parseBahtInputToSatang(serviceFeeBaht) ?? null)
+          : null,
+      })
+      await refetch()
+    } catch {
+      setServiceFeeError('บันทึกค่าบริการไม่สำเร็จ กรุณาลองใหม่')
+    }
   }
 
   return (
@@ -223,6 +252,13 @@ export default function WorkOrderDetailPage({
             label="วันติดตั้ง"
             value={`${formatDate(order.installDate)}`}
           />
+          {order.serviceFeeIncludingVatSatang !== undefined ? (
+            <InfoRow
+              icon={CircleDollarSign}
+              label="ค่าบริการรวม VAT 7%"
+              value={formatSatangAsBaht(order.serviceFeeIncludingVatSatang)}
+            />
+          ) : null}
           <InfoRow
             icon={Package}
             label="ประเภทการใช้งาน"
@@ -279,6 +315,26 @@ export default function WorkOrderDetailPage({
           )}
         </dl>
         {canEditRequestNumber && <div className="mt-3 border-t border-gray-100 pt-3"><div className="flex items-end gap-2"><div className="min-w-0 flex-1"><Input label="เลขที่ใบคำร้อง" hint="ไม่บังคับ สามารถกรอกภายหลังได้" defaultValue={order.requestNumber ?? ''} onChange={(event) => setRequestNumber(event.target.value)} /></div><Button type="button" loading={savingRequestNumber} onClick={() => void saveRequestNumber()}>บันทึก</Button></div></div>}
+        {canEditServiceFee ? (
+          <div className="mt-3 border-t border-gray-100 pt-3">
+            <div className="flex items-end gap-2">
+              <div className="min-w-0 flex-1">
+                <Input
+                  label="ค่าบริการรวม VAT 7% (บาท)"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  hint="เว้นว่างเพื่อล้างยอด · แก้ไขได้แม้งานเสร็จแล้ว"
+                  error={serviceFeeError ?? undefined}
+                  value={serviceFeeBaht}
+                  onChange={(event) => setServiceFeeBaht(event.target.value)}
+                />
+              </div>
+              <Button type="button" loading={updateServiceFee.isPending} onClick={() => void saveServiceFee()}>
+                บันทึกราคา
+              </Button>
+            </div>
+          </div>
+        ) : null}
         {order.note && (
           <div className="mt-3 pt-3 border-t border-gray-100">
             <p className="text-xs text-gray-500 mb-1">หมายเหตุ</p>

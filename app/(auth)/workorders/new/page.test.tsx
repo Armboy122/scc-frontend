@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NewWorkOrderPage from './page'
@@ -75,5 +75,36 @@ describe('NewWorkOrderPage stock recovery path', () => {
     )
     expect(screen.getByRole('button', { name: 'สร้างใบงาน' })).toBeDisabled()
     expect(screen.getByRole('status')).toHaveTextContent('ยังสร้างใบงานไม่ได้: สต็อกขาด 3 ชิ้น')
+  })
+
+  it('shows the VAT-inclusive service fee only to Admin or Exec', () => {
+    const { rerender } = render(<NewWorkOrderPage />)
+    expect(screen.getByLabelText('ค่าบริการรวม VAT 7% (บาท)')).toBeInTheDocument()
+
+    useAuthMock.mockReturnValue({
+      user: { id: 'tech-1', name: 'Tech', role: 'tech', officeId: 'office-1' },
+    })
+    rerender(<NewWorkOrderPage />)
+    expect(screen.queryByLabelText('ค่าบริการรวม VAT 7% (บาท)')).not.toBeInTheDocument()
+  })
+
+  it('converts an Exec baht input to exact satang in the create payload', async () => {
+    const user = userEvent.setup()
+    const mutateAsync = vi.fn().mockResolvedValue({ data: { id: 'wo-created' } })
+    useCreateWorkOrderMock.mockReturnValue({ mutateAsync, isPending: false, error: null })
+    render(<NewWorkOrderPage />)
+
+    await user.type(screen.getByLabelText(/ชื่อลูกค้า/), 'ลูกค้าทดสอบ')
+    await user.type(screen.getByLabelText('ค่าบริการรวม VAT 7% (บาท)'), '4066.00')
+    await user.click(screen.getByRole('button', { name: /ระยะเวลาติดตั้ง/ }))
+    const days = screen.getAllByRole('button', { name: /เลือกวันที่/ })
+    await user.click(days[0])
+    await user.click(days[1])
+    await user.click(screen.getByRole('button', { name: 'สร้างใบงาน' }))
+
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1))
+    expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({
+      serviceFeeIncludingVatSatang: 406600,
+    }))
   })
 })

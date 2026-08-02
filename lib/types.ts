@@ -82,11 +82,20 @@ export interface UpdateUserRequest {
 }
 
 export interface ReportSummary {
+  year: number
   totalCovers: number
   installedCovers: number
   utilization: number
   activeWorkOrders: number
-  byOffice: Array<{ office: Office; total: number; installed: number; inStock: number; utilization: number }>
+  completedRevenueIncludingVatSatang: number
+  byOffice: Array<{
+    office: Office
+    total: number
+    installed: number
+    inStock: number
+    utilization: number
+    completedRevenueIncludingVatSatang: number
+  }>
   usageByType: Record<UsageType, number>
 }
 
@@ -168,6 +177,7 @@ export interface WorkOrder {
   customerName: string
 	requestNumber?: string
   customerPhone?: string
+  serviceFeeIncludingVatSatang?: number
   installDate?: string
   removalDate?: string
   plannedQty: number
@@ -337,6 +347,7 @@ export interface CreateWorkOrderRequest {
   customerName: string
 	requestNumber?: string
   customerPhone?: string
+  serviceFeeIncludingVatSatang?: number
   installDate: string
   removalDate: string
   plannedQty: number

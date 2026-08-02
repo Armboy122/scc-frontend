@@ -4,15 +4,15 @@
  */
 
 const CACHE_PREFIX = 'scc-shell-'
-const CACHE_VERSION = '2026-07-10-1'
+const CACHE_VERSION = '2026-07-24-icon-v2'
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`
 const OFFLINE_URL = '/offline.html'
 const PRECACHE_URLS = [
   OFFLINE_URL,
   '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/apple-touch-icon.png',
+  '/icons/icon-v2-192.png',
+  '/icons/icon-v2-512.png',
+  '/icons/apple-touch-icon-v2.png',
 ]
 const PRECACHE_PATHS = new Set(PRECACHE_URLS)
 
