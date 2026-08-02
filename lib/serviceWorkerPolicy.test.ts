@@ -155,9 +155,9 @@ describe('service worker cache policy', () => {
     expect(cache.addAll).toHaveBeenCalledWith([
       '/offline.html',
       '/manifest.json',
-      '/icons/icon-192.png',
-      '/icons/icon-512.png',
-      '/icons/apple-touch-icon.png',
+      '/icons/icon-v2-192.png',
+      '/icons/icon-v2-512.png',
+      '/icons/apple-touch-icon-v2.png',
     ])
 
     let activateWork: Promise<unknown> | undefined
